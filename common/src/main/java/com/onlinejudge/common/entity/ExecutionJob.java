@@ -68,10 +68,6 @@ public class ExecutionJob {
         return submission;
     }
 
-    public Long getSubmissionId() {
-        return submission.getId();
-    }
-
     public String getLockedBy() {
         return lockedBy;
     }

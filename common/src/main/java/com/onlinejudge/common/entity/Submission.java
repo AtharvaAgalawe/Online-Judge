@@ -136,10 +136,6 @@ public class Submission {
         return user;
     }
 
-    public Long getUserId() {
-        return user.getId();
-    }
-
     public Problem getProblem() {
         return problem;
     }
