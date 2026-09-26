@@ -2,6 +2,9 @@ package com.onlinejudge.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -62,7 +65,8 @@ class SubmissionServiceImplTest {
     @Test
     void createWithoutKeyUsesRateLimiterAndPersists() {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
-        when(submissionCreator.create(USER_ID, 1L, 2L, "code", null)).thenReturn(submission(42L, user));
+        when(submissionCreator.create(eq(USER_ID), eq(1L), eq(2L), eq("code"), isNull(), anyString()))
+                .thenReturn(submission(42L, user));
 
         SubmissionAcceptedResponse response = service.create("alice", request(), null);
 
@@ -127,7 +131,7 @@ class SubmissionServiceImplTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(idempotencyStore.findCompleted(USER_ID, KEY)).thenReturn(Optional.empty());
         when(idempotencyStore.reserve(USER_ID, KEY)).thenReturn(true);
-        when(submissionCreator.create(USER_ID, 1L, 2L, "code", KEY))
+        when(submissionCreator.create(eq(USER_ID), eq(1L), eq(2L), eq("code"), eq(KEY), anyString()))
                 .thenThrow(new BusinessRuleException("too large"));
 
         assertThatThrownBy(() -> service.create("alice", request(), KEY))
@@ -140,7 +144,8 @@ class SubmissionServiceImplTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(idempotencyStore.findCompleted(USER_ID, KEY)).thenReturn(Optional.empty());
         when(idempotencyStore.reserve(USER_ID, KEY)).thenReturn(true);
-        when(submissionCreator.create(USER_ID, 1L, 2L, "code", KEY)).thenReturn(submission(42L, user));
+        when(submissionCreator.create(eq(USER_ID), eq(1L), eq(2L), eq("code"), eq(KEY), anyString()))
+                .thenReturn(submission(42L, user));
 
         service.create("alice", request(), KEY);
 
@@ -152,7 +157,7 @@ class SubmissionServiceImplTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(idempotencyStore.findCompleted(USER_ID, KEY)).thenReturn(Optional.empty());
         when(idempotencyStore.reserve(USER_ID, KEY)).thenReturn(true);
-        when(submissionCreator.create(USER_ID, 1L, 2L, "code", KEY))
+        when(submissionCreator.create(eq(USER_ID), eq(1L), eq(2L), eq("code"), eq(KEY), anyString()))
                 .thenThrow(new DataIntegrityViolationException("duplicate key"));
         when(submissionRepository.findByIdempotencyKeyAndUserId(KEY, USER_ID))
                 .thenReturn(Optional.of(submission(42L, user)));
@@ -189,3 +194,4 @@ class SubmissionServiceImplTest {
         return submission;
     }
 }
+

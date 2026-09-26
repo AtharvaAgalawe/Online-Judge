@@ -11,3 +11,7 @@ app:
   security:
     jwt:
       secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtMDEyMzQ1Njc4OWFiY2RlZg==
+  messaging:
+    # Tests drive the queues directly; the temporary consumer (Phase 6) must not race them.
+    stub-consumer:
+      enabled: false
