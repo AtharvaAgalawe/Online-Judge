@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -14,9 +15,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.onlinejudge.backend.exception.BusinessRuleException;
 import com.onlinejudge.backend.exception.DuplicateResourceException;
 import com.onlinejudge.backend.exception.InvalidRefreshTokenException;
+import com.onlinejudge.backend.exception.ResourceInUseException;
 import com.onlinejudge.backend.exception.ResourceNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,6 +60,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateResourceException.class)
     ProblemDetail handleDuplicate(DuplicateResourceException ex, HttpServletRequest request) {
         return problem(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    ProblemDetail handleBusinessRule(BusinessRuleException ex, HttpServletRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ResourceInUseException.class)
+    ProblemDetail handleInUse(ResourceInUseException ex, HttpServletRequest request) {
+        return problem(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request);
+    }
+
+    /**
+     * Last-resort mapping for constraint violations that race past service-level checks
+     * (schema constraints are the final authority) — surfaced as 409, never a 500.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Data integrity violation for {} {}", request.getMethod(), request.getRequestURI(), ex);
+        return problem(HttpStatus.CONFLICT, "Conflict", "The request conflicts with existing data", request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, "Bad Request",
+                "Parameter '%s' has an invalid value".formatted(ex.getName()), request);
     }
 
     @ExceptionHandler({InvalidRefreshTokenException.class, BadCredentialsException.class})

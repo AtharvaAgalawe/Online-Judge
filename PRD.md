@@ -400,7 +400,7 @@ All endpoints under `/api/v1`. Auth via `Authorization: Bearer <JWT>` unless mar
 | GET | `/problems/{slug}` | Public | — | 200 statement + samples + limits | 404 |
 | GET | `/problems/{slug}/stats` | Public | — | 200 `{totalSubmissions, acceptedCount, acceptanceRate}` | 404 |
 | POST | `/admin/problems` | Admin | `{title, statement, difficulty, timeLimitMs, memoryLimitKb, tags[]}` | 201 `{id, slug}` | 400 |
-| PUT | `/admin/problems/{id}` | Admin | same as create (partial) | 200 | 404, 400 |
+| PUT | `/admin/problems/{id}` | Admin | same as create (partial); optional `published` is the publish/unpublish toggle and publishing requires ≥1 test case | 200 | 404, 400 |
 | DELETE | `/admin/problems/{id}` | Admin | — | 204 (soft: unpublish) | 404 |
 | GET | `/admin/problems/{id}/test-cases` | Admin | — | 200 full list incl. hidden | 404 |
 | POST | `/admin/problems/{id}/test-cases` | Admin | `{input, expectedOutput, isSample, order, points}` | 201 | 400 |
