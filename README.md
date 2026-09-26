@@ -56,10 +56,15 @@ CI (`.github/workflows/ci.yml`) runs both on every push and pull request.
 
 ## Local development
 
+Create `infrastructure/.env` (git-ignored — never commit it) with the variables the
+`local` Spring profile references: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`,
+`RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`,
+`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, and `JWT_SECRET` (base64, at least
+32 bytes decoded). Then:
+
 ```
-cp .env.example infrastructure/.env   # fill in secrets — never commit .env
 docker compose -f infrastructure/docker-compose.yml up -d
 ```
 
-Then run `backend` and `execution-worker` with the `local` Spring profile, which reads
-secrets from environment variables only (AGENTS.md §24).
+Run `backend` and `execution-worker` with the `local` Spring profile; it reads secrets
+from environment variables only (AGENTS.md §24).
