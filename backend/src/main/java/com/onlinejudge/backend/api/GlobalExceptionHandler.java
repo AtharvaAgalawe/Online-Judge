@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -19,7 +20,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.onlinejudge.backend.exception.BusinessRuleException;
 import com.onlinejudge.backend.exception.DuplicateResourceException;
+import com.onlinejudge.backend.exception.IdempotencyConflictException;
 import com.onlinejudge.backend.exception.InvalidRefreshTokenException;
+import com.onlinejudge.backend.exception.RateLimitExceededException;
 import com.onlinejudge.backend.exception.ResourceInUseException;
 import com.onlinejudge.backend.exception.ResourceNotFoundException;
 
@@ -70,6 +73,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceInUseException.class)
     ProblemDetail handleInUse(ResourceInUseException ex, HttpServletRequest request) {
         return problem(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    ProblemDetail handleIdempotencyConflict(IdempotencyConflictException ex, HttpServletRequest request) {
+        return problem(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    ResponseEntity<ProblemDetail> handleRateLimit(RateLimitExceededException ex, HttpServletRequest request) {
+        ProblemDetail problem = problem(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", ex.getMessage(), request);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(problem);
     }
 
     /**

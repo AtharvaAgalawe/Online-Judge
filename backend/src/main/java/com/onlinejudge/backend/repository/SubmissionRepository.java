@@ -2,6 +2,7 @@ package com.onlinejudge.backend.repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,8 @@ import com.onlinejudge.common.entity.Submission;
 import com.onlinejudge.common.enums.Verdict;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
+
+    Optional<Submission> findByIdempotencyKeyAndUserId(String idempotencyKey, Long userId);
 
     Page<Submission> findByUserIdOrderBySubmittedAtDesc(Long userId, Pageable pageable);
 
