@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SpotBugs exclusions. Kept minimal and documented — each exclusion must have a reason. -->
+<FindBugsFilter>
+  <!-- EI_EXPOSE_REP / EI_EXPOSE_REP2: unavoidable in this architecture. AGENTS.md §2
+       deliberately keeps JPA entities as the domain model (no separate immutable
+       domain layer), so entities are mutable and references to them are stored and
+       returned throughout the service layer. Excluded project-wide rather than
+       scattering @SuppressFBWarnings annotations across every service. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+</FindBugsFilter>

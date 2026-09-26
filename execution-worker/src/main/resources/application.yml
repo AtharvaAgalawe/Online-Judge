@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: online-judge-worker
+  profiles:
+    default: local
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+server:
+  port: 8081
