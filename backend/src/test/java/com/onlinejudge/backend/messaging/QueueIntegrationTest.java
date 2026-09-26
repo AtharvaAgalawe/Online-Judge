@@ -37,6 +37,7 @@ import com.onlinejudge.backend.repository.SubmissionRepository;
 import com.onlinejudge.backend.repository.TestCaseRepository;
 import com.onlinejudge.backend.service.SubmissionCreatedEvent;
 import com.onlinejudge.common.dto.SubmissionJobMessage;
+import com.onlinejudge.common.messaging.MessagingTopology;
 import com.onlinejudge.common.entity.Language;
 import com.onlinejudge.common.entity.Problem;
 import com.onlinejudge.common.entity.Submission;
@@ -107,9 +108,9 @@ class QueueIntegrationTest {
 
     @Test
     void topologyDeclaresJobsRetryAndDeadLetterQueues() {
-        assertThat(rabbitAdmin.getQueueInfo(RabbitTopologyConfig.JOBS_QUEUE)).isNotNull();
-        assertThat(rabbitAdmin.getQueueInfo(RabbitTopologyConfig.RETRY_QUEUE)).isNotNull();
-        assertThat(rabbitAdmin.getQueueInfo(RabbitTopologyConfig.DEAD_LETTER_QUEUE)).isNotNull();
+        assertThat(rabbitAdmin.getQueueInfo(MessagingTopology.JOBS_QUEUE)).isNotNull();
+        assertThat(rabbitAdmin.getQueueInfo(MessagingTopology.RETRY_QUEUE)).isNotNull();
+        assertThat(rabbitAdmin.getQueueInfo(MessagingTopology.DEAD_LETTER_QUEUE)).isNotNull();
     }
 
     @Test
@@ -136,7 +137,7 @@ class QueueIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         long submissionId = objectMapper.readTree(body).get("submissionId").asLong();
 
-        Object received = rabbitTemplate.receiveAndConvert(RabbitTopologyConfig.JOBS_QUEUE, 5_000);
+        Object received = rabbitTemplate.receiveAndConvert(MessagingTopology.JOBS_QUEUE, 5_000);
         assertThat(received).isInstanceOf(SubmissionJobMessage.class);
         SubmissionJobMessage message = (SubmissionJobMessage) received;
         assertThat(message.submissionId()).isEqualTo(submissionId);
@@ -163,11 +164,11 @@ class QueueIntegrationTest {
             eventPublisher.publishEvent(new SubmissionCreatedEvent(message, "cid-rollback"));
             status.setRollbackOnly();
         });
-        assertThat(rabbitTemplate.receiveAndConvert(RabbitTopologyConfig.JOBS_QUEUE, 1_500)).isNull();
+        assertThat(rabbitTemplate.receiveAndConvert(MessagingTopology.JOBS_QUEUE, 1_500)).isNull();
 
         transaction.executeWithoutResult(status ->
                 eventPublisher.publishEvent(new SubmissionCreatedEvent(message, "cid-commit")));
-        assertThat(rabbitTemplate.receiveAndConvert(RabbitTopologyConfig.JOBS_QUEUE, 5_000)).isNotNull();
+        assertThat(rabbitTemplate.receiveAndConvert(MessagingTopology.JOBS_QUEUE, 5_000)).isNotNull();
     }
 
     private String userToken(String username) throws Exception {
@@ -186,3 +187,4 @@ class QueueIntegrationTest {
         return objectMapper.readTree(login).get("accessToken").asText();
     }
 }
+

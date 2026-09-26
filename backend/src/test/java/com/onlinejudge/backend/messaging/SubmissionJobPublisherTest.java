@@ -25,6 +25,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import com.onlinejudge.backend.service.SubmissionCreatedEvent;
 import com.onlinejudge.backend.service.SubmissionService;
 import com.onlinejudge.common.dto.SubmissionJobMessage;
+import com.onlinejudge.common.messaging.MessagingTopology;
 
 @ExtendWith(MockitoExtension.class)
 class SubmissionJobPublisherTest {
@@ -50,7 +51,7 @@ class SubmissionJobPublisherTest {
         publisher.onSubmissionCreated(event);
 
         ArgumentCaptor<MessagePostProcessor> postProcessor = ArgumentCaptor.forClass(MessagePostProcessor.class);
-        verify(rabbitTemplate).convertAndSend(eq(RabbitTopologyConfig.EXCHANGE), eq(RabbitTopologyConfig.ROUTING_KEY),
+        verify(rabbitTemplate).convertAndSend(eq(MessagingTopology.EXCHANGE), eq(MessagingTopology.ROUTING_KEY),
                 eq(event.message()), postProcessor.capture());
 
         Message message = postProcessor.getValue()
@@ -79,3 +80,4 @@ class SubmissionJobPublisherTest {
         publisher.onSubmissionCreated(event);
     }
 }
+

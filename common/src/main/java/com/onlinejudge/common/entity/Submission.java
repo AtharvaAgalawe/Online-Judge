@@ -74,7 +74,7 @@ public class Submission {
     @Column(name = "submitted_at", nullable = false, updatable = false)
     private Instant submittedAt;
 
-    @Column(name = "judged_at", updatable = false)
+    @Column(name = "judged_at")
     private Instant judgedAt;
 
     protected Submission() {

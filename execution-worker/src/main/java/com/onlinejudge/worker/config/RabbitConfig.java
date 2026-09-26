@@ -1,4 +1,4 @@
-package com.onlinejudge.backend.messaging;
+package com.onlinejudge.worker.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -14,12 +14,12 @@ import org.springframework.context.annotation.Configuration;
 import com.onlinejudge.common.messaging.MessagingTopology;
 
 /**
- * Queue topology from PRD §19; names are the shared contract in
- * {@link MessagingTopology}. Declared idempotently by RabbitAdmin at startup — the
- * worker declares the same topology on its side, and brokers tolerate both.
+ * The worker declares the same topology as the backend (idempotent on the broker) so it
+ * can run even when the API is down; names come from the shared contract in
+ * {@link MessagingTopology}.
  */
 @Configuration
-public class RabbitTopologyConfig {
+public class RabbitConfig {
 
     @Bean
     DirectExchange submissionExchange() {
@@ -63,14 +63,12 @@ public class RabbitTopologyConfig {
                 .with(MessagingTopology.DEAD_ROUTING_KEY);
     }
 
-    /** JSON payloads for the job messages (bucket: the shared SubmissionJobMessage record). */
     @Bean
     Jackson2JsonMessageConverter jsonMessageConverter() {
         Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
         DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
-        // Deserialization instantiates classes named in the message's __TypeId__ header.
-        // Spring AMQP trusts only java.lang/java.util by default, so our own payload
-        // package must be whitelisted explicitly — and nothing else may be.
+        // Only the shared job-message package may be instantiated from the __TypeId__
+        // header; Spring AMQP's safe default rejects everything else.
         typeMapper.setTrustedPackages("com.onlinejudge.common.dto", "java.util", "java.lang");
         converter.setJavaTypeMapper(typeMapper);
         return converter;

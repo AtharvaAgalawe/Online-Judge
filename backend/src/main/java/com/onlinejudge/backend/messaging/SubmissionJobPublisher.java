@@ -10,6 +10,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.onlinejudge.backend.service.SubmissionCreatedEvent;
 import com.onlinejudge.backend.service.SubmissionService;
+import com.onlinejudge.common.messaging.MessagingTopology;
 
 /**
  * Publishes the job message to RabbitMQ strictly after the submission transaction has
@@ -21,8 +22,6 @@ import com.onlinejudge.backend.service.SubmissionService;
 public class SubmissionJobPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(SubmissionJobPublisher.class);
-
-    private static final String CORRELATION_ID_HEADER = "correlationId";
 
     private final RabbitTemplate rabbitTemplate;
     private final SubmissionService submissionService;
@@ -36,9 +35,10 @@ public class SubmissionJobPublisher {
     public void onSubmissionCreated(SubmissionCreatedEvent event) {
         long submissionId = event.message().submissionId();
         try {
-            rabbitTemplate.convertAndSend(RabbitTopologyConfig.EXCHANGE, RabbitTopologyConfig.ROUTING_KEY,
+            rabbitTemplate.convertAndSend(MessagingTopology.EXCHANGE, MessagingTopology.ROUTING_KEY,
                     event.message(), message -> {
-                        message.getMessageProperties().setHeader(CORRELATION_ID_HEADER, event.correlationId());
+                        message.getMessageProperties().setHeader(
+                                MessagingTopology.CORRELATION_ID_HEADER, event.correlationId());
                         // Durable queue + persistent message: the job survives broker restarts (PRD §8).
                         message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
                         return message;

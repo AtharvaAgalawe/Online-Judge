@@ -9,6 +9,18 @@ spring:
       ddl-auto: none
   flyway:
     enabled: false
+  rabbitmq:
+    listener:
+      simple:
+        # Manual ack (PRD §19): ack only after the DB write commits.
+        acknowledge-mode: manual
+        # Bounded consumer pool; one container run per thread in later phases (PRD §19/§21).
+        concurrency: 4
+        prefetch: 4
 
 server:
   port: 8081
+
+app:
+  worker:
+    lease-duration: 60s
