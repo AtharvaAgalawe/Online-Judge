@@ -6,6 +6,7 @@ import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -76,6 +77,13 @@ public class RabbitTopologyConfig {
     /** JSON payloads for the job messages (bucket: the shared SubmissionJobMessage record). */
     @Bean
     Jackson2JsonMessageConverter jsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+        // Deserialization instantiates classes named in the message's __TypeId__ header.
+        // Spring AMQP trusts only java.lang/java.util by default, so our own payload
+        // package must be whitelisted explicitly — and nothing else may be.
+        typeMapper.setTrustedPackages("com.onlinejudge.common.dto", "java.util", "java.lang");
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
     }
 }
