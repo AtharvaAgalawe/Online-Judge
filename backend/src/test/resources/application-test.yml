@@ -5,3 +5,9 @@ spring:
       ddl-auto: none
   flyway:
     enabled: true
+
+# Test-only signing key — clearly fake, never used outside tests (AGENTS.md §24).
+app:
+  security:
+    jwt:
+      secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtMDEyMzQ1Njc4OWFiY2RlZg==
