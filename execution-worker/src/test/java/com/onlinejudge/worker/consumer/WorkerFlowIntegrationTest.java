@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -57,7 +58,10 @@ class WorkerFlowIntegrationTest {
     private ExecutionJobRepository jobRepository;
 
     @Test
+    @Transactional
     void onlyOneWorkerWinsTheLeaseAndAnExpiredLeaseCountsARetry() {
+        // The lease queries are @Modifying and demand an active transaction, exactly like
+        // their production caller (JobClaimService.claim); the test rolls back after.
         long submissionId = seedSubmissionWithJob("lease");
 
         assertThat(jobRepository.tryAcquireLease(submissionId, "worker-A", 60)).isEqualTo(1);
