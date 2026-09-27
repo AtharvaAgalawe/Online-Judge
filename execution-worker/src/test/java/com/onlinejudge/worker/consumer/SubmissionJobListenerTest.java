@@ -23,7 +23,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import com.onlinejudge.common.dto.SubmissionJobMessage;
 import com.onlinejudge.common.messaging.MessagingTopology;
-import com.onlinejudge.worker.judge.StubJudgeService;
+import com.onlinejudge.worker.judge.JudgeService;
 import com.rabbitmq.client.Channel;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +35,7 @@ class SubmissionJobListenerTest {
     private JobClaimService claimService;
 
     @Mock
-    private StubJudgeService judgeService;
+    private JudgeService judgeService;
 
     @Mock
     private RabbitTemplate rabbitTemplate;
@@ -130,3 +130,4 @@ class SubmissionJobListenerTest {
         verifyNoInteractions(judgeService);
     }
 }
+

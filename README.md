@@ -160,13 +160,10 @@ Under active development, in verifiable increments:
 - [x] Phase 6 — Queue topology and after-commit publishing
 - [x] Phase 7 — Execution worker: leases, manual ack, duplicate-delivery safety
 - [x] Phase 8 — Docker sandbox with adversarial verification
-- [ ] Phase 9 — Verdict engine (output comparison, aggregation)
+- [x] Phase 9 — Verdict engine (output comparison, aggregation, retryable final write)
 - [ ] Phase 10 — Submission history and status endpoints
 - [ ] Phase 11–12 — Frontend and admin UI
 - [ ] Phase 13–17 — Caching, observability, testing hardening, CI/CD, performance
-
-Until the verdict engine lands, the worker completes submissions with a placeholder
-verdict so the full pipeline is demonstrable end to end.
 
 ## License
 

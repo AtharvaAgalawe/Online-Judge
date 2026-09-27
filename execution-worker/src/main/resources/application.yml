@@ -29,3 +29,16 @@ app:
     max-output-bytes: 65536
     compile-memory-mb: 512
     pids-limit: 64
+
+resilience4j:
+  retry:
+    instances:
+      # PRD §23: bounded in-process retry for transient DB failures during the final
+      # write; exhausted attempts fall through to the queue-level retry path.
+      resultWrite:
+        max-attempts: 3
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.dao.DataAccessException
