@@ -24,3 +24,8 @@ server:
 app:
   worker:
     lease-duration: 60s
+    compile-timeout: 10s
+    watchdog-buffer: 2s
+    max-output-bytes: 65536
+    compile-memory-mb: 512
+    pids-limit: 64
