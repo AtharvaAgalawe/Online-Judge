@@ -102,7 +102,7 @@ public class ContainerRunner {
             String containerId = createSandboxContainer(image, properties.compileMemoryMb() * 1024L * 1024L,
                     Map.of(SOURCE_MOUNT, readOnlyBind(sourceDir, SOURCE_MOUNT),
                             OUTPUT_MOUNT, readWriteBind(artifactsDir, OUTPUT_MOUNT)),
-                    Map.of(TMP_MOUNT, TMPFS_OPTIONS));
+                    Map.of(TMP_MOUNT, TMPFS_OPTIONS), artifactsDir);
             try {
                 ExecOutcome outcome = exec(containerId, List.of("sh", "-c", compileCmd),
                         properties.compileTimeout());
@@ -139,7 +139,7 @@ public class ContainerRunner {
             containerId = createSandboxContainer(image, memoryLimitKb * 1024L,
                     Map.of(SANDBOX_WORKDIR, readOnlyBind(artifactsDir, SANDBOX_WORKDIR),
                             INPUT_MOUNT, readOnlyBind(inputDir, INPUT_MOUNT)),
-                    Map.of(TMP_MOUNT, TMPFS_OPTIONS));
+                    Map.of(TMP_MOUNT, TMPFS_OPTIONS), artifactsDir);
 
             Instant start = Instant.now();
             ExecOutcome outcome = exec(containerId, List.of("sh", "-c", runCmd + " < " + INPUT_FILE),
@@ -182,7 +182,7 @@ public class ContainerRunner {
     }
 
     private String createSandboxContainer(String image, long memoryBytes, Map<String, Bind> binds,
-                                          Map<String, String> tmpFs) {
+                                          Map<String, String> tmpFs, Path ownershipRoot) {
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withNetworkMode("none")
                 .withReadonlyRootfs(true)
@@ -201,9 +201,27 @@ public class ContainerRunner {
                 .withEntrypoint("sleep")
                 .withCmd("infinity")
                 .withWorkingDir(SANDBOX_WORKDIR);
+        // The workspace is owner-only (0600/0700, PRD §18), so on POSIX hosts the sandbox
+        // must run as the same uid to read the mounted files; on non-POSIX hosts (Windows
+        // dev machines) the image's own non-root judge user applies.
+        String sandboxUser = posixUid(ownershipRoot);
+        if (sandboxUser != null) {
+            create.withUser(sandboxUser);
+        }
         String containerId = create.exec().getId();
         docker.startContainerCmd(containerId).exec();
         return containerId;
+    }
+
+    private static String posixUid(Path path) {
+        try {
+            Object uid = Files.getAttribute(path, "unix:uid");
+            return uid == null ? null : uid.toString();
+        } catch (UnsupportedOperationException | IOException e) {
+            // Swallowing is correct because a missing POSIX uid is the expected state on
+            // Windows hosts; the image's built-in non-root user is used instead.
+            return null;
+        }
     }
 
     private ExecOutcome exec(String containerId, List<String> command, Duration timeout) {
