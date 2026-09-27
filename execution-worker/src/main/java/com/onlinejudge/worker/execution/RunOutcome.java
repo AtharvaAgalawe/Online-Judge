@@ -11,6 +11,7 @@ package com.onlinejudge.worker.execution;
  * @param stdout          captured stdout (possibly truncated)
  * @param stderr          captured stderr (possibly truncated)
  * @param durationMillis  wall-clock time from start to process exit
+ * @param memoryUsedKb    cgroup peak memory when the host kernel exposes it, else 0
  */
 public record RunOutcome(
         int exitCode,
@@ -18,5 +19,6 @@ public record RunOutcome(
         boolean stdoutTruncated,
         String stdout,
         String stderr,
-        long durationMillis) {
+        long durationMillis,
+        long memoryUsedKb) {
 }

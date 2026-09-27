@@ -81,8 +81,12 @@ public class ContainerRunner {
     }
 
     /** Creates the per-submission workspace; the caller owns cleanup via {@link #deleteWorkspace}. */
-    public Path createWorkspace() throws IOException {
-        return Files.createTempDirectory("oj-sandbox-");
+    public Path createWorkspace() {
+        try {
+            return Files.createTempDirectory("oj-sandbox-");
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to create the sandbox workspace", e);
+        }
     }
 
     /**
@@ -121,6 +125,22 @@ public class ContainerRunner {
     }
 
     /**
+     * Interpreted languages skip compilation: their source itself is the run mount, so
+     * it is staged into the artifacts directory (owner-only, like the compile inputs).
+     */
+    public Path stageSource(Path workspace, String sourceFilename, String sourceCode) {
+        try {
+            Path artifactsDir = Files.createDirectories(workspace.resolve("artifacts"));
+            Path sourceFile = artifactsDir.resolve(sourceFilename);
+            Files.writeString(sourceFile, sourceCode, StandardCharsets.UTF_8);
+            restrictToOwner(sourceFile);
+            return artifactsDir;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to stage the interpreted source", e);
+        }
+    }
+
+    /**
      * Runs one test case: {@code artifactsDir} is mounted read-only at {@code /box}, the
      * test input is mounted read-only and redirected to stdin, and the watchdog kills the
      * container at {@code timeLimit + watchdogBuffer}.
@@ -145,8 +165,9 @@ public class ContainerRunner {
             ExecOutcome outcome = exec(containerId, List.of("sh", "-c", runCmd + " < " + INPUT_FILE),
                     timeLimit.plus(properties.watchdogBuffer()));
             long duration = Duration.between(start, Instant.now()).toMillis();
+            long memoryKb = readMemoryPeakKb(containerId);
             return new RunOutcome(outcome.exitCode(), outcome.timedOut(), outcome.stdoutTruncated(),
-                    outcome.stdout(), outcome.stderr(), duration);
+                    outcome.stdout(), outcome.stderr(), duration, memoryKb);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to prepare the run input", e);
         } finally {
@@ -270,6 +291,24 @@ public class ContainerRunner {
         }
         return new ExecOutcome(exitCode, timedOut.get(), stdout.asString(StandardCharsets.UTF_8),
                 stderr.asString(StandardCharsets.UTF_8), stdout.isTruncated());
+    }
+
+    /**
+     * Reads the container's cgroup peak memory (cgroup v2 {@code memory.peak}, falling
+     * back to the v1 counter) before the container is removed. Kernels without the peak
+     * counter (some dev hosts) report 0 rather than failing the run.
+     */
+    private long readMemoryPeakKb(String containerId) {
+        try {
+            ExecOutcome outcome = exec(containerId, List.of("sh", "-c",
+                    "cat /sys/fs/cgroup/memory.peak 2>/dev/null"
+                            + " || cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null"
+                            + " || echo 0"), Duration.ofSeconds(3));
+            String value = outcome.stdout().trim();
+            return value.isEmpty() ? 0 : Long.parseLong(value) / 1024;
+        } catch (RuntimeException e) {
+            return 0;
+        }
     }
 
     private void removeContainer(String containerId) {

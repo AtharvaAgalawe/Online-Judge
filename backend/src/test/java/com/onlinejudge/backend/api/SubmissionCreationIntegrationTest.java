@@ -156,6 +156,12 @@ class SubmissionCreationIntegrationTest {
         String payload = objectMapper.writeValueAsString(Map.of(
                 "problemId", problemId, "languageId", languageId, "sourceCode", "class Main {}"));
 
+        // The limiter is a fixed 3s window aligned to epoch time; two requests could
+        // otherwise straddle a boundary and both be "first in their window". Align to the
+        // start of a window so the pair deterministically shares one.
+        long millisIntoWindow = System.currentTimeMillis() % 3_000;
+        Thread.sleep(3_000 - millisIntoWindow + 200);
+
         mockMvc.perform(post("/api/v1/submissions")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(payload))

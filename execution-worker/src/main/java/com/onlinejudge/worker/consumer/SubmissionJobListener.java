@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 import com.onlinejudge.common.dto.SubmissionJobMessage;
 import com.onlinejudge.common.messaging.MessagingTopology;
-import com.onlinejudge.worker.judge.StubJudgeService;
+import com.onlinejudge.worker.judge.JudgeService;
 import com.rabbitmq.client.Channel;
 
 /**
@@ -28,10 +28,10 @@ public class SubmissionJobListener {
     private static final Logger log = LoggerFactory.getLogger(SubmissionJobListener.class);
 
     private final JobClaimService claimService;
-    private final StubJudgeService judgeService;
+    private final JudgeService judgeService;
     private final RabbitTemplate rabbitTemplate;
 
-    public SubmissionJobListener(JobClaimService claimService, StubJudgeService judgeService,
+    public SubmissionJobListener(JobClaimService claimService, JudgeService judgeService,
                                  RabbitTemplate rabbitTemplate) {
         this.claimService = claimService;
         this.judgeService = judgeService;
