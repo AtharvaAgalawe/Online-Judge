@@ -1,0 +1,24 @@
+# Line-ending policy: LF in the repository and in working trees everywhere, except
+# Windows-native scripts. This overrides each developer's core.autocrlf setting, so
+# Windows development and Linux CI see byte-identical files (matches .editorconfig).
+* text=auto
+*.java text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+mvnw text eol=lf
+Dockerfile text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files must never be normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.zip binary

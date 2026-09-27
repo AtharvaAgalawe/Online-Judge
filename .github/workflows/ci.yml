@@ -5,6 +5,26 @@ on:
   push:
 
 jobs:
+  guards:
+    name: Repository hygiene guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Mechanically enforces AGENTS.md §24: no env files or credential material may
+      # ever be committed. If this fails, remove the file with
+      # `git rm --cached <file>` and add a .gitignore rule.
+      - name: Fail if env files or credentials are tracked
+        run: |
+          forbidden=$(git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|jks|keystore)$|id_rsa.*|credentials\.(json|ya?ml)|secrets\.(json|ya?ml))' || true)
+          if [ -n "$forbidden" ]; then
+            echo "::error::Forbidden files are tracked in git:"
+            echo "$forbidden"
+            exit 1
+          fi
+          echo "No forbidden files tracked."
+
   backend:
     name: Build, Test & Static Analysis (Java)
     runs-on: ubuntu-latest

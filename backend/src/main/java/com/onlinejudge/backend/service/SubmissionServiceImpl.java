@@ -1,9 +1,12 @@
 package com.onlinejudge.backend.service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.onlinejudge.backend.api.dto.CreateSubmissionRequest;
 import com.onlinejudge.backend.api.dto.SubmissionAcceptedResponse;
@@ -14,6 +17,7 @@ import com.onlinejudge.backend.repository.SubmissionRepository;
 import com.onlinejudge.backend.repository.UserRepository;
 import com.onlinejudge.common.entity.Submission;
 import com.onlinejudge.common.entity.User;
+import com.onlinejudge.common.enums.SubmissionStatus;
 
 /**
  * Submission-creation orchestration: rate limit, Idempotency-Key handling, then the
@@ -75,8 +79,9 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         try {
+            String correlationId = UUID.randomUUID().toString();
             Submission submission = submissionCreator.create(userId, request.problemId(), request.languageId(),
-                    request.sourceCode(), idempotencyKey);
+                    request.sourceCode(), idempotencyKey, correlationId);
             if (idempotencyKey != null) {
                 idempotencyStore.complete(userId, idempotencyKey, submission.getId());
             }
@@ -99,6 +104,13 @@ public class SubmissionServiceImpl implements SubmissionService {
             }
             throw e;
         }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markQueued(Long submissionId) {
+        submissionRepository.findById(submissionId)
+                .ifPresent(submission -> submission.transitionTo(SubmissionStatus.QUEUED));
     }
 
     private SubmissionAcceptedResponse replay(Long submissionId, Long userId) {

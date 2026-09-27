@@ -1,5 +1,5 @@
 # Local development profile. Values come from environment variables — never literal
-# secrets (AGENTS.md §24). The worker must never run Flyway; schema is owned by the
+# secrets (AGENTS.md §24). The worker never runs Flyway; the schema is owned by the
 # backend (single migrator).
 spring:
   datasource:
@@ -11,8 +11,3 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:onlinejudge}
     password: ${RABBITMQ_PASSWORD}
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}

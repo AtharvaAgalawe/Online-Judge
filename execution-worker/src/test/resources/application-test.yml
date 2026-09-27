@@ -3,5 +3,7 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: none
+  # Worker tests migrate a throwaway container using the backend's scripts, copied onto
+  # the test classpath by pom.xml — production never migrates from the worker.
   flyway:
-    enabled: false
+    enabled: true
