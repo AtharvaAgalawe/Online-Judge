@@ -161,7 +161,7 @@ Under active development, in verifiable increments:
 - [x] Phase 7 — Execution worker: leases, manual ack, duplicate-delivery safety
 - [x] Phase 8 — Docker sandbox with adversarial verification
 - [x] Phase 9 — Verdict engine (output comparison, aggregation, retryable final write)
-- [ ] Phase 10 — Submission history and status endpoints
+- [x] Phase 10 — Submission history and status endpoints with ownership enforcement
 - [ ] Phase 11–12 — Frontend and admin UI
 - [ ] Phase 13–17 — Caching, observability, testing hardening, CI/CD, performance
 
