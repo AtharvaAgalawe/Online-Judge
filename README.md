@@ -159,6 +159,51 @@ refresh, list problems, detail, stats, languages, submit, poll to a terminal sta
 history — printing `PASS`/`FAIL` per step and exiting non-zero on the first failure.
 `BASE_URL` defaults to `http://localhost:8080`.
 
+### Admin area
+
+The admin dashboard lives under `/admin` (all routes are `RequireAuth` + `RequireAdmin`;
+the client guard is for UX only — the backend enforces `ROLE_ADMIN` at the service layer):
+
+- `/admin/problems` — problem list including unpublished problems (filter by published / search)
+- `/admin/problems/new` — create a problem
+- `/admin/problems/:id` — edit a problem, manage sample/hidden test cases, publish/unpublish
+- `/admin/submissions` — submissions browser with problem/verdict filters
+- `/admin/queue` — queue-health snapshot (database-derived lease state, not RabbitMQ depth)
+
+To grant the admin role locally, register a user through the UI or the API, then promote
+it in Postgres (adjust the container/port to your stack):
+
+```
+docker exec <postgres-container> psql -U onlinejudge -d onlinejudge -c \
+  "INSERT INTO user_roles (user_id, role_id) SELECT u.id, r.id FROM users u, roles r WHERE u.username = '<name>' AND r.name = 'ROLE_ADMIN' ON CONFLICT DO NOTHING;"
+```
+
+**Dev-only bootstrap admin (no SQL needed).** On the `local` profile the backend can create
+a single admin on startup. It is inactive by default and is **never** active outside `local`;
+with no password configured it creates nothing (no weak default). It only creates the account
+when the username is absent — it never modifies an existing user.
+
+```
+BOOTSTRAP_ADMIN_ENABLED=true \
+BOOTSTRAP_ADMIN_USERNAME=admin \
+BOOTSTRAP_ADMIN_PASSWORD=<pick-a-password> \
+# optional: BOOTSTRAP_ADMIN_EMAIL (defaults to <username>@localhost)
+```
+
+Admin live verification (requires infra + backend only — the admin journey never submits
+code, so no worker or language images are needed). Provision an admin (above) and run the
+journey script with that user:
+
+```
+BASE_URL=http://localhost:8080 ADMIN_USER=<admin-username> node scripts/verify-phase12-live.mjs
+```
+
+`ADMIN_USER` must be a user that already holds `ROLE_ADMIN`; `BASE_URL` defaults to
+`http://localhost:8080`. The script logs in, confirms a non-admin gets `403`, creates and
+publishes a problem with sample + hidden test cases, checks it appears in both the admin
+and public lists, and exercises the submissions browser and queue-status endpoint.
+
+
 ## Build and test
 
 ```
@@ -191,7 +236,7 @@ Under active development, in verifiable increments:
 - [x] Phase 9 — Verdict engine (output comparison, aggregation, retryable final write)
 - [x] Phase 10 — Submission history and status endpoints with ownership enforcement
 - [x] Phase 11 — Frontend (MVP) with live verification
-- [ ] Phase 12 — Admin UI
+- [x] Phase 12 — Admin dashboard (authoring UI, submissions browser, queue status)
 - [ ] Phase 13–17 — Caching, observability, testing hardening, CI/CD, performance
 
 ## License

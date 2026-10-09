@@ -17,6 +17,9 @@ export function NavBar() {
       </Link>
       <Link to="/">Problems</Link>
       {status === 'authenticated' && <Link to="/submissions">My Submissions</Link>}
+      {status === 'authenticated' && user?.roles.includes('ROLE_ADMIN') && (
+        <Link to="/admin/problems">Admin</Link>
+      )}
       <span className="nav__spacer" />
       {status === 'authenticated' ? (
         <>

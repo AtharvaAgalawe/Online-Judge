@@ -42,6 +42,10 @@ public final class ProblemSpecifications {
                 cb.like(cb.lower(root.get("slug")), pattern, '\\'));
     }
 
+    public static Specification<Problem> hasPublished(boolean published) {
+        return (root, query, cb) -> cb.equal(root.get("published"), published);
+    }
+
     /** Escapes LIKE wildcards so user input cannot become a wildcard pattern. */
     private static String escapeLike(String value) {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");

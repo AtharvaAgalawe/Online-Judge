@@ -5,8 +5,14 @@ import { RegisterPage } from './pages/RegisterPage'
 import { ProblemListPage } from './pages/ProblemListPage'
 import { ProblemDetailPage } from './pages/ProblemDetailPage'
 import { RequireAuth } from './auth/RequireAuth'
+import { RequireAdmin } from './auth/RequireAdmin'
 import { SubmissionResultPage } from './pages/SubmissionResultPage'
 import { HistoryPage } from './pages/HistoryPage'
+import { AdminProblemListPage } from './pages/admin/AdminProblemListPage'
+import { AdminProblemCreatePage } from './pages/admin/AdminProblemCreatePage'
+import { AdminProblemEditPage } from './pages/admin/AdminProblemEditPage'
+import { AdminSubmissionsPage } from './pages/admin/AdminSubmissionsPage'
+import { AdminQueueStatusPage } from './pages/admin/AdminQueueStatusPage'
 
 function NotFoundPage() {
   return (
@@ -35,6 +41,56 @@ function App() {
           element={
             <RequireAuth>
               <HistoryPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/problems"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminProblemListPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/problems/new"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminProblemCreatePage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/problems/:id"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminProblemEditPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/submissions"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminSubmissionsPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/queue"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminQueueStatusPage />
+              </RequireAdmin>
             </RequireAuth>
           }
         />

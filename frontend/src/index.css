@@ -185,3 +185,23 @@ pre {
   border-radius: var(--radius);
   overflow: auto;
 }
+
+textarea {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.counter-list {
+  display: flex;
+  gap: var(--space-4);
+  list-style: none;
+  padding: 0;
+  flex-wrap: wrap;
+}
