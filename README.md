@@ -129,7 +129,35 @@ java -jar execution-worker/target/execution-worker-0.1.0-SNAPSHOT.jar
 ```
 
 The API listens on `:8080`, Swagger UI is at `/swagger-ui.html`, and the worker consumes
-from RabbitMQ. Optionally run the frontend with `cd frontend && npm install && npm run dev`.
+from RabbitMQ.
+
+### 4. Run the frontend
+
+```
+cd frontend
+npm install
+npm run dev        # Vite dev server; proxies /api to http://localhost:8080
+```
+
+Other frontend scripts:
+
+```
+npm run lint       # ESLint
+npm run test       # Vitest (jsdom)
+npm run build      # tsc + Vite production build
+```
+
+Live verification (requires infra + backend + worker running, and at least one published
+problem with a test case):
+
+```
+BASE_URL=http://localhost:8080 node scripts/verify-phase11-live.mjs
+```
+
+The script walks the exact API sequence the UI performs — reachable, register, login,
+refresh, list problems, detail, stats, languages, submit, poll to a terminal status,
+history — printing `PASS`/`FAIL` per step and exiting non-zero on the first failure.
+`BASE_URL` defaults to `http://localhost:8080`.
 
 ## Build and test
 
@@ -162,7 +190,8 @@ Under active development, in verifiable increments:
 - [x] Phase 8 — Docker sandbox with adversarial verification
 - [x] Phase 9 — Verdict engine (output comparison, aggregation, retryable final write)
 - [x] Phase 10 — Submission history and status endpoints with ownership enforcement
-- [ ] Phase 11–12 — Frontend and admin UI
+- [x] Phase 11 — Frontend (MVP) with live verification
+- [ ] Phase 12 — Admin UI
 - [ ] Phase 13–17 — Caching, observability, testing hardening, CI/CD, performance
 
 ## License

@@ -703,6 +703,28 @@ Each phase lists: objective, tasks, dependencies, expected output, definition of
 - **Tasks**: problem list/detail pages, code editor + submit, polling result view, history table, auth screens.
 - **Dependencies**: Phases 4, 5, 10 (needs stable API).
 - **DoD**: a person can complete the full journey in §6.1 through the UI alone.
+- **Status**: Complete.
+- **Implementation notes**:
+  - Dependencies: only five runtime dependencies were newly added in this phase —
+    `react-router-dom@7.18.4`, `@tanstack/react-query@5.104.1`,
+    `@uiw/react-codemirror@4.25.12`, `@codemirror/lang-java@6.0.2`, and
+    `@codemirror/lang-python@6.2.1`. React `18.3.1`/`react-dom@18.3.1` and the
+    testing/tooling stack (`vitest@2.1.9`, `@testing-library/react@16.3.3`,
+    `@testing-library/jest-dom@7.0.1`, `@testing-library/dom@10.4.2`, `jsdom@25.0.1`)
+    were already present before Phase 11.
+  - Refresh-token storage tradeoff: the refresh token is persisted in `localStorage`
+    (survives reload, shared across tabs) while the short-lived access token is held
+    **in memory only**, never written to storage. This accepts the standard XSS exposure
+    of a readable refresh token in exchange for avoiding a silent-refresh round-trip on
+    every reload; a production system would move refresh tokens to an
+    `HttpOnly`/`SameSite` cookie.
+  - Result retrieval uses **polling** (`@tanstack/react-query` `refetchInterval` on
+    the submission **detail** endpoint `/submissions/{id}`), not SSE/WebSockets. The
+    detail response carries the per-case results the result page renders, so the same
+    endpoint serves the first load and every subsequent poll — the MVP priority order
+    favours a simpler, proxy-friendly mechanism over a persistent connection.
+  - Deferred: user-level statistics and admin problem/test-case authoring UI remain in
+    Phase 12 (the admin API from Phase 4 is available but has no frontend yet).
 
 ### Phase 12 — Admin Dashboard
 - **Objective**: Usable UI for problem/test-case authoring.
