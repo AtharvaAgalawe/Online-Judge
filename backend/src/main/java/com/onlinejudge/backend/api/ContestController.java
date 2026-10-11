@@ -16,22 +16,27 @@ import com.onlinejudge.backend.api.dto.ContestProblemDetailResponse;
 import com.onlinejudge.backend.api.dto.ContestSummaryResponse;
 import com.onlinejudge.backend.api.dto.PagedResponse;
 import com.onlinejudge.backend.api.dto.RegistrationResponse;
+import com.onlinejudge.backend.api.dto.StandingsResponse;
 import com.onlinejudge.backend.service.ContestProblemService;
 import com.onlinejudge.backend.service.ContestPublicService;
+import com.onlinejudge.backend.service.StandingsService;
 import com.onlinejudge.common.enums.ContestStatus;
 
-/** Public contest browsing and registration (PRD §7.8); writes require authentication. */
+/** Public contest browsing, registration, and standings (PRD §7.8); writes require authentication. */
 @RestController
 @RequestMapping("/api/v1/contests")
 public class ContestController {
 
     private final ContestPublicService contestPublicService;
     private final ContestProblemService contestProblemService;
+    private final StandingsService standingsService;
 
     public ContestController(ContestPublicService contestPublicService,
-                             ContestProblemService contestProblemService) {
+                             ContestProblemService contestProblemService,
+                             StandingsService standingsService) {
         this.contestPublicService = contestPublicService;
         this.contestProblemService = contestProblemService;
+        this.standingsService = standingsService;
     }
 
     @GetMapping
@@ -51,6 +56,11 @@ public class ContestController {
     public ContestProblemDetailResponse problem(@PathVariable Long id, @PathVariable String slug,
                                                 Authentication authentication) {
         return contestProblemService.detail(id, slug, principalOrNull(authentication));
+    }
+
+    @GetMapping("/{id}/standings")
+    public StandingsResponse standings(@PathVariable Long id, Authentication authentication) {
+        return standingsService.standings(id, principalOrNull(authentication));
     }
 
     @PostMapping("/{id}/register")
