@@ -12,4 +12,11 @@ describe('VerdictBadge', () => {
     render(<VerdictBadge verdict={null} />)
     expect(screen.getByText('Pending')).toBeInTheDocument()
   })
+
+  it('prefixes the verdict with a symbol hidden from assistive tech', () => {
+    render(<VerdictBadge verdict="ACCEPTED" />)
+    const icon = screen.getByText('✓')
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText('Accepted')).toBeInTheDocument()
+  })
 })

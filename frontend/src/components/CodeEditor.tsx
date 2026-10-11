@@ -27,12 +27,14 @@ export function CodeEditor({
   readOnly?: boolean
 }) {
   return (
-    <CodeMirror
-      value={value}
-      height="320px"
-      readOnly={readOnly}
-      extensions={extensionFor(languageName)}
-      onChange={(next) => onChange(next)}
-    />
+    <div className="code-editor">
+      <CodeMirror
+        value={value}
+        height="320px"
+        readOnly={readOnly}
+        extensions={extensionFor(languageName)}
+        onChange={(next) => onChange(next)}
+      />
+    </div>
   )
 }

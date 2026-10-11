@@ -11,7 +11,33 @@ const CLASS: Record<Verdict, string> = {
   SYSTEM_ERROR: 'verdict--bad',
 }
 
+const ICON: Record<Verdict, string> = {
+  ACCEPTED: '✓',
+  WRONG_ANSWER: '✗',
+  TIME_LIMIT_EXCEEDED: '!',
+  MEMORY_LIMIT_EXCEEDED: '!',
+  COMPILATION_ERROR: '✗',
+  RUNTIME_ERROR: '▲',
+  SYSTEM_ERROR: '▲',
+}
+
 export function VerdictBadge({ verdict }: { verdict: Verdict | null }) {
-  if (!verdict) return <span className="verdict verdict--pending">Pending</span>
-  return <span className={`verdict ${CLASS[verdict]}`}>{VERDICT_LABELS[verdict]}</span>
+  if (!verdict) {
+    return (
+      <span className="verdict verdict--pending">
+        <span className="verdict__icon" aria-hidden="true">
+          …
+        </span>
+        <span>Pending</span>
+      </span>
+    )
+  }
+  return (
+    <span className={`verdict ${CLASS[verdict]}`}>
+      <span className="verdict__icon" aria-hidden="true">
+        {ICON[verdict]}
+      </span>
+      <span>{VERDICT_LABELS[verdict]}</span>
+    </span>
+  )
 }
