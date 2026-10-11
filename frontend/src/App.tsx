@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { LandingPage } from './pages/LandingPage'
 import { ProblemListPage } from './pages/ProblemListPage'
 import { ProblemDetailPage } from './pages/ProblemDetailPage'
 import { RequireAuth } from './auth/RequireAuth'
@@ -26,7 +27,8 @@ function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<ProblemListPage />} />
+        <Route index element={<LandingPage />} />
+        <Route path="problems" element={<ProblemListPage />} />
         <Route path="problems/:slug" element={<ProblemDetailPage />} />
         <Route
           path="submissions/:id"

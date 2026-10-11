@@ -14,7 +14,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false)
 
   const locationState = location.state as { from?: string; message?: string } | null
-  const from = locationState?.from ?? '/'
+  const from = locationState?.from ?? '/problems'
   const message = locationState?.message
 
   async function onSubmit(event: FormEvent) {

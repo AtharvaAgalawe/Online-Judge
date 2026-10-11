@@ -20,7 +20,7 @@ export function RegisterPage() {
     setError(null)
     try {
       await register({ username, email, password })
-      navigate('/', { replace: true })
+      navigate('/problems', { replace: true })
     } catch (caught) {
       if (caught instanceof AutoLoginFailedError) {
         navigate('/login', { state: { message: 'Account created. Please log in.' } })
