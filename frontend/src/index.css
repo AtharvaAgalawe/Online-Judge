@@ -1,4 +1,5 @@
 @import './styles/tokens.css';
+@import './styles/fonts.css';
 
 :root {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
