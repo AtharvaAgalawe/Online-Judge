@@ -23,3 +23,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# AI workflow artifacts (plan/spec docs produced by tooling — not part of the repo structure, AGENTS.md §3)
+docs/superpowers/
+.playwright-mcp/
