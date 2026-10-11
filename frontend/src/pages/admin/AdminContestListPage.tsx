@@ -73,6 +73,7 @@ export function AdminContestListPage() {
                 <th>Start</th>
                 <th>End</th>
                 <th>Problems</th>
+                <th>Problems published</th>
                 <th>Participants</th>
               </tr>
             </thead>
@@ -90,6 +91,11 @@ export function AdminContestListPage() {
                   <td>{new Date(contest.startTime).toLocaleString()}</td>
                   <td>{new Date(contest.endTime).toLocaleString()}</td>
                   <td>{contest.problemCount}</td>
+                  <td>
+                    {contest.problemsPublishedAt
+                      ? `✓ ${new Date(contest.problemsPublishedAt).toLocaleString()}`
+                      : '—'}
+                  </td>
                   <td>{contest.participantCount}</td>
                 </tr>
               ))}

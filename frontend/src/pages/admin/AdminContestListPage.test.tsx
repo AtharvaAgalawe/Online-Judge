@@ -2,21 +2,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../../auth/AuthContext'
+import type { AdminContestSummary } from '../../api/admin'
 import { AdminContestListPage } from './AdminContestListPage'
 import { renderWithProviders } from '../../test/renderWithProviders'
 
+const CONTEST: AdminContestSummary = {
+  id: 3, name: 'Spring Cup', startTime: '2026-03-01T10:00:00Z', endTime: '2026-03-01T12:00:00Z',
+  status: 'ENDED', isPrivate: true, participantCount: 12, problemCount: 4,
+  problemsPublishedAt: '2026-03-01T09:00:00Z',
+}
+
 const PAGE = {
-  content: [{
-    id: 3, name: 'Spring Cup', startTime: '2026-03-01T10:00:00Z', endTime: '2026-03-01T12:00:00Z',
-    status: 'ENDED', isPrivate: true, participantCount: 12, problemCount: 4,
-    problemsPublishedAt: '2026-03-01T09:00:00Z',
-  }],
+  content: [CONTEST],
   page: 0, size: 20, totalElements: 1, totalPages: 1,
 }
 
-function stubListResponse() {
+function stubListResponse(content: AdminContestSummary[] = PAGE.content) {
   vi.stubGlobal('fetch', vi.fn(async () =>
-    new Response(JSON.stringify(PAGE), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    new Response(JSON.stringify({ ...PAGE, content, totalElements: content.length }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } })))
 }
 
 function renderPage() {
@@ -49,5 +53,17 @@ describe('AdminContestListPage', () => {
 
     expect(await screen.findByRole('link', { name: /new contest/i }))
       .toHaveAttribute('href', '/admin/contests/new')
+  })
+
+  it('shows the problems-published marker only when published', async () => {
+    stubListResponse([
+      { ...CONTEST, id: 4, name: 'Winter Cup', problemsPublishedAt: null },
+      CONTEST,
+    ])
+    renderPage()
+
+    expect(await screen.findByText('Winter Cup')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText(/^✓/)).toBeInTheDocument()
   })
 })
