@@ -33,4 +33,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long>, J
             group by s.problem.id
             """)
     List<ProblemSubmissionStats> aggregateStatsByProblemIds(Collection<Long> problemIds, Verdict accepted);
+
+    /** Problem ids the user has solved (any ACCEPTED submission) — contest "solved" marks. */
+    @Query("""
+            select distinct s.problem.id from Submission s
+            where s.user.id = :userId and s.problem.id in :problemIds and s.verdict = :verdict
+            """)
+    List<Long> findProblemIdsSolvedBy(Long userId, Collection<Long> problemIds, Verdict verdict);
 }
