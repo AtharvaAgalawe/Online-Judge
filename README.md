@@ -34,7 +34,7 @@ code**, and **throughput** — rather than around CRUD.
 - Sandboxed execution: one ephemeral container per compile/run with `--network none`, read-only rootfs, dropped capabilities, `no-new-privileges`, memory/CPU/pids limits, a non-root user, and an external wall-clock watchdog independent of the in-container process
 - Captured output is hard-capped, so an output bomb cannot exhaust the worker
 
-**Supported languages:** Java 21 and Python 3.12 (runtime images pinned by digest).
+**Supported languages:** Java 21, Python 3.12, C 17, C++ 17, JavaScript (Node 22), and Go 1.23 (runtime images pinned by digest).
 
 ## Architecture
 
@@ -115,6 +115,9 @@ The judge runs submissions in these images (referenced by the seeded language ro
 ```
 docker build -t oj-java21 infrastructure/docker/images/oj-java21
 docker build -t oj-python312 infrastructure/docker/images/oj-python312
+docker build -t oj-gcc13 infrastructure/docker/images/oj-gcc13
+docker build -t oj-node22 infrastructure/docker/images/oj-node22
+docker build -t oj-go123 infrastructure/docker/images/oj-go123
 ```
 
 ### 3. Run the services
