@@ -120,6 +120,15 @@ Each major feature below follows: *Why it exists → User story → Inputs → O
 - **Dependencies**: `ROLE_ADMIN` authorization, `problems`, `test_cases`.
 - **Edge cases**: deleting a test case that has historical `submission_results` referencing it → soft-handled via `ON DELETE CASCADE` on results only, not by silently rewriting judged history; publishing a problem with zero test cases → rejected (400).
 - **Acceptance criteria**: only `ROLE_ADMIN` can reach any `/admin/**` endpoint; unpublished problems are fully invisible to solvers, including via direct slug URL.
+- **Status**: Complete (Phase 12).
+- **Implementation notes**:
+  - The admin dashboard adds four read endpoints consumed by the UI, all guarded by `@PreAuthorize("hasRole('ADMIN')")` at both the controller and service layers (AGENTS.md §10):
+    - `GET /api/v1/admin/problems?published&search&page&size` — paginated list including unpublished problems.
+    - `GET /api/v1/admin/problems/{id}` — full detail (statement, limits, tags, authorship, test-case count) including unpublished problems.
+    - `GET /api/v1/admin/submissions?problemId&userId&status&verdict&page&size` — submissions across all users.
+    - `GET /api/v1/admin/system/queue-status` — queue-health snapshot (see below).
+  - **Queue status is database-derived, not RabbitMQ broker depth.** The snapshot is computed from `execution_jobs` + `submissions` (lease state: `queued`, `activeLease`, `staleLease`, `retried`, `oldestQueuedAgeSeconds`, and the `stale` job list). It deliberately does **not** query the RabbitMQ broker's queue depth, so it reports what the database actually knows about job state rather than claiming a broker metric the backend never reads (AGENTS.md §11/§14 — do not oversell what is measured).
+  - The admin area is guarded **client-side for UX** (`RequireAdmin` route wrapper renders a "Forbidden" view for non-admins) and **enforced server-side** by the service/controller `@PreAuthorize` checks above. The client guard is convenience only; it is never the access-control boundary.
 
 ## 8. Non-Functional Requirements
 
@@ -424,8 +433,10 @@ All endpoints under `/api/v1`. Auth via `Authorization: Bearer <JWT>` unless mar
 ### Admin / Observability
 | Method | Path | Auth | Response |
 |---|---|---|---|
-| GET | `/admin/submissions?status&userId` | Admin | filtered submission list |
-| GET | `/admin/system/queue-status` | Admin | `{queueDepth, activeWorkers, stuckJobs}` |
+| GET | `/admin/problems?published&search&page&size` | Admin | paginated list incl. unpublished problems |
+| GET | `/admin/problems/{id}` | Admin | full problem detail incl. unpublished |
+| GET | `/admin/submissions?problemId&userId&status&verdict&page&size` | Admin | filtered submission list across all users |
+| GET | `/admin/system/queue-status` | Admin | `{queued, activeLease, staleLease, retried, oldestQueuedAgeSeconds, stale[]}` — database-derived lease state, **not** RabbitMQ broker depth |
 
 **Validation rules** (Bean Validation): `username` 3–30 alnum, `password` ≥ 8 chars, `sourceCode` ≤ 65536 bytes non-blank, `problemId`/`languageId` must reference existing enabled rows.
 
@@ -582,11 +593,13 @@ Test fixtures include deliberately adversarial submissions (infinite loop, fork 
 
 ## 31. Frontend Requirements
 
-React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: problem list (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
+React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: landing page at `/` (hero with a mock editor window and a stack strip; CTAs to browse problems or register), problem list at `/problems` (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
+
+Visual system: a light "blueprint/brutalist print" theme — cream paper background with a faint grid, 1px ink borders, sharp corners (radius 0), hazard-tape divider bands, serif display headings (Instrument Serif), Inter for body/UI, JetBrains Mono for code — all self-hosted (SIL OFL), served from `/fonts`. The chrome is monochrome (black/white/grays); verdicts use muted functional colors (deep green / brick red / dark amber) plus symbol prefixes so state is readable without color. Routing: `/` is the landing page; the problem list lives at `/problems`.
 
 ## 32. Admin Requirements
 
-Admin UI (still React, role-gated route) for: problem CRUD with a markdown-preview statement editor, test case upload (manual entry + a bulk "paste input/output pairs" helper), publish/unpublish toggle (blocked if zero test cases), a queue-status view backed by `/admin/system/queue-status`, and a submissions browser with status/verdict filters for debugging user reports.
+Admin UI (still React, role-gated route) for: problem CRUD with a markdown-preview statement editor, test case upload (manual entry + a bulk "paste input/output pairs" helper), publish/unpublish toggle (publishing with zero test cases is rejected by the backend — surfaced to the admin — and the UI disables the publish action until at least one test case exists), a queue-status view backed by `/admin/system/queue-status`, and a submissions browser with status/verdict filters for debugging user reports.
 
 ## 33. Performance Requirements
 
@@ -703,11 +716,62 @@ Each phase lists: objective, tasks, dependencies, expected output, definition of
 - **Tasks**: problem list/detail pages, code editor + submit, polling result view, history table, auth screens.
 - **Dependencies**: Phases 4, 5, 10 (needs stable API).
 - **DoD**: a person can complete the full journey in §6.1 through the UI alone.
+- **Status**: Complete.
+- **Implementation notes**:
+  - Dependencies: only five runtime dependencies were newly added in this phase —
+    `react-router-dom@7.18.4`, `@tanstack/react-query@5.104.1`,
+    `@uiw/react-codemirror@4.25.12`, `@codemirror/lang-java@6.0.2`, and
+    `@codemirror/lang-python@6.2.1`. React `18.3.1`/`react-dom@18.3.1` and the
+    testing/tooling stack (`vitest@2.1.9`, `@testing-library/react@16.3.3`,
+    `@testing-library/jest-dom@7.0.1`, `@testing-library/dom@10.4.2`, `jsdom@25.0.1`)
+    were already present before Phase 11.
+  - Refresh-token storage tradeoff: the refresh token is persisted in `localStorage`
+    (survives reload, shared across tabs) while the short-lived access token is held
+    **in memory only**, never written to storage. This accepts the standard XSS exposure
+    of a readable refresh token in exchange for avoiding a silent-refresh round-trip on
+    every reload; a production system would move refresh tokens to an
+    `HttpOnly`/`SameSite` cookie.
+  - Result retrieval uses **polling** (`@tanstack/react-query` `refetchInterval` on
+    the submission **detail** endpoint `/submissions/{id}`), not SSE/WebSockets. The
+    detail response carries the per-case results the result page renders, so the same
+    endpoint serves the first load and every subsequent poll — the MVP priority order
+    favours a simpler, proxy-friendly mechanism over a persistent connection.
+  - Deferred: user-level statistics and admin problem/test-case authoring UI remain in
+    Phase 12 (the admin API from Phase 4 is available but has no frontend yet).
 
 ### Phase 12 — Admin Dashboard
 - **Objective**: Usable UI for problem/test-case authoring.
 - **Dependencies**: Phase 11's component library, Phase 4's API.
 - **DoD**: an admin can author and publish a new problem entirely through the UI.
+- **Status**: Complete.
+- **Implementation notes**:
+  - Frontend admin area lives under `/admin` with routes `/admin/problems`,
+    `/admin/problems/new`, `/admin/problems/:id`, `/admin/submissions`, and `/admin/queue`.
+    Every route is wrapped in `RequireAuth` + `RequireAdmin`; the `RequireAdmin` guard
+    checks for `ROLE_ADMIN` and renders a "Forbidden" view otherwise. This guard is for
+    UX only — authorization is enforced server-side at the service layer (`@PreAuthorize`)
+    regardless of the route.
+  - Four admin read endpoints back the dashboard (see §7.7): `GET /admin/problems`,
+    `GET /admin/problems/{id}`, `GET /admin/submissions`, and `GET /admin/system/queue-status`.
+  - `GET /admin/system/queue-status` is **database-derived (lease state)**, not RabbitMQ
+    broker depth: it is computed from `execution_jobs` + `submissions` and reports the
+    job state the database actually persists, not a broker metric the backend never reads.
+  - Client-side query invalidation (React Query) refreshes the admin problem list/detail
+    after create/update/test-case mutations; the test-case manager supports manual entry
+    of sample and hidden cases with a publish toggle that is disabled in the UI when the
+    problem has no test cases, and rejected by the backend if publishing is attempted with
+    zero test cases.
+  - Live verification: `frontend/scripts/verify-phase12-live.mjs`, driven by a local wrapper
+    that provisions an admin (`verify-phase12.ps1` — no worker or language images needed,
+    since the admin journey never submits code).
+  - Dev convenience (not a product feature): a **local-profile-only** bootstrap admin
+    (`BootstrapAdminInitializer`, `app.bootstrap-admin.*`) can create one `ROLE_ADMIN` account
+    on startup from `BOOTSTRAP_ADMIN_*` environment variables. It is inactive unless
+    `BOOTSTRAP_ADMIN_ENABLED=true` **and** the `local` profile is active, so it can never run
+    in `test`/`docker`/`prod`; with no password configured it creates nothing (never a weak
+    default), it is idempotent, and it never modifies an existing account. Credentials are
+    never logged. There is deliberately **no** UI to self-assign a role — admin can only be
+    granted out of band (this bootstrap path locally, or direct DB promotion).
 
 ### Phase 13 — Redis (caching layer)
 - **Objective**: Wire the caching strategy from §24 (idempotency/rate-limit already exist from Phase 5; this phase adds problem/list/stats caching).

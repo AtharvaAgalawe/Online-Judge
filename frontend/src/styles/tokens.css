@@ -1,0 +1,28 @@
+:root {
+  --paper: #f2f0eb;
+  --paper-raise: #faf9f6;
+  --ink: #141414;
+  --ink-soft: #5f5f5f;
+  --ink-faint: #8b8b8b;
+  --grid-line: rgba(20, 20, 20, 0.07);
+  --grid-line-major: rgba(20, 20, 20, 0.13);
+  --tint: rgba(20, 20, 20, 0.04);
+  --verdict-ok: #1f6f3f;
+  --verdict-ok-bg: rgba(31, 111, 63, 0.08);
+  --verdict-bad: #a63a31;
+  --verdict-bad-bg: rgba(166, 58, 49, 0.08);
+  --verdict-warn: #7a5a00;
+  --verdict-warn-bg: rgba(122, 90, 0, 0.1);
+  --verdict-pending: #5f5f5f;
+  --verdict-pending-bg: rgba(95, 95, 95, 0.08);
+  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4rem;
+  --frame-margin: 12px;
+}
