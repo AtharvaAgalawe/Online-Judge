@@ -34,7 +34,6 @@ export function HistoryPage() {
           <table className="problem-table">
             <thead>
               <tr>
-                <th>#</th>
                 <th>Problem</th>
                 <th>Language</th>
                 <th>Verdict</th>
@@ -45,9 +44,8 @@ export function HistoryPage() {
               {query.data.content.map((submission) => (
                 <tr key={submission.id}>
                   <td>
-                    <Link to={`/submissions/${submission.id}`}>{submission.id}</Link>
+                    <Link to={`/submissions/${submission.id}`}>{submission.problemSlug}</Link>
                   </td>
-                  <td>{submission.problemSlug}</td>
                   <td>{submission.languageName}</td>
                   <td>
                     <VerdictBadge verdict={submission.verdict} />
