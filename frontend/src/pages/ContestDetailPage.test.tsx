@@ -12,6 +12,8 @@ function encodeSegment(value: object): string {
 
 const ACCESS = `h.${encodeSegment({ sub: 'alice', uid: 1, roles: [] })}.s`
 
+const STANDINGS = { frozen: false, frozenAt: null, rows: [] }
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -57,7 +59,13 @@ describe('ContestDetailPage', () => {
   })
 
   it('shows locked problems before start', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(contestDetail())))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/standings')) return json(STANDINGS)
+        return json(contestDetail())
+      }),
+    )
 
     renderPage()
 
@@ -70,8 +78,9 @@ describe('ContestDetailPage', () => {
   it('shows problems and navigates to the contest problem', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        json(
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/standings')) return json(STANDINGS)
+        return json(
           contestDetail({
             status: 'RUNNING',
             problemsRevealed: true,
@@ -87,13 +96,16 @@ describe('ContestDetailPage', () => {
               },
             ],
           }),
-        ),
-      ),
+        )
+      }),
     )
 
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Two Sum' }))
+    const problemButton = await screen.findByRole('button', { name: 'Two Sum' })
+    expect(screen.getByText('Standings')).toBeInTheDocument()
+
+    fireEvent.click(problemButton)
 
     expect(await screen.findByText('problem page')).toBeInTheDocument()
   })
@@ -103,6 +115,7 @@ describe('ContestDetailPage', () => {
     const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
       async (input) => {
         const url = String(input)
+        if (url.includes('/standings')) return json(STANDINGS)
         if (url.includes('/auth/refresh')) return json({ accessToken: ACCESS, expiresIn: 900 })
         if (url.includes('/api/v1/contests/1/register')) return json({ registered: true })
         return json(contestDetail())
@@ -124,7 +137,13 @@ describe('ContestDetailPage', () => {
   })
 
   it('shows a countdown while running', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(contestDetail({ status: 'RUNNING' }))))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/standings')) return json(STANDINGS)
+        return json(contestDetail({ status: 'RUNNING' }))
+      }),
+    )
 
     renderPage()
 

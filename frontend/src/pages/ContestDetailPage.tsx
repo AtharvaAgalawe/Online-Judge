@@ -1,11 +1,12 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchContest, registerForContest, unregisterFromContest } from '../api/contests'
+import { fetchContest, fetchStandings, registerForContest, unregisterFromContest } from '../api/contests'
 import { useAuth } from '../auth/AuthContext'
 import { ContestStatusChip } from '../components/ContestStatusChip'
 import { Countdown } from '../components/Countdown'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { Spinner } from '../components/Spinner'
+import { StandingsTable } from '../components/StandingsTable'
 
 export function ContestDetailPage() {
   const { id = '' } = useParams()
@@ -20,6 +21,12 @@ export function ContestDetailPage() {
     queryFn: () => fetchContest(contestId),
     enabled: validId,
     refetchInterval: 30_000,
+  })
+  const standings = useQuery({
+    queryKey: ['standings', contestId],
+    queryFn: () => fetchStandings(contestId),
+    enabled: validId && query.data?.problemsRevealed === true,
+    refetchInterval: query.data?.status === 'RUNNING' ? 15_000 : false,
   })
   const register = useMutation({
     mutationFn: () => registerForContest(contestId),
@@ -114,6 +121,10 @@ export function ContestDetailPage() {
           </tbody>
         </table>
       )}
+      <h2>Standings</h2>
+      {standings.isPending && <Spinner label="Loading standings" />}
+      {standings.isError && <ErrorBanner error={standings.error} />}
+      {standings.isSuccess && <StandingsTable standings={standings.data} />}
     </section>
   )
 }
