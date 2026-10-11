@@ -6,6 +6,7 @@ import { LandingPage } from './pages/LandingPage'
 import { ProblemListPage } from './pages/ProblemListPage'
 import { ProblemDetailPage } from './pages/ProblemDetailPage'
 import { ContestsPage } from './pages/ContestsPage'
+import { ContestDetailPage } from './pages/ContestDetailPage'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireAdmin } from './auth/RequireAdmin'
 import { SubmissionResultPage } from './pages/SubmissionResultPage'
@@ -32,6 +33,7 @@ function App() {
         <Route path="problems" element={<ProblemListPage />} />
         <Route path="problems/:slug" element={<ProblemDetailPage />} />
         <Route path="contests" element={<ContestsPage />} />
+        <Route path="contests/:id" element={<ContestDetailPage />} />
         <Route
           path="submissions/:id"
           element={
