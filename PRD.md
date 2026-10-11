@@ -597,7 +597,7 @@ SUBMITTED → QUEUED → PICKED_UP → COMPILING ─┬─▶ COMPILATION_ERROR 
 
 | Limit | Default | Configurable per |
 |---|---|---|
-| CPU time (compile) | 10s wall clock | Global |
+| CPU time (compile) | 60s wall clock (sized for Go's cold-cache stdlib build, ~20s measured; other toolchains finish in under a second) | Global |
 | CPU time (run) | `problem.time_limit_ms × language.time_limit_multiplier` | Problem × Language |
 | Memory | `problem.memory_limit_kb` (default 256MB) | Problem |
 | Process/thread count (`pids-limit`) | 64 | Global |
@@ -634,11 +634,11 @@ Test fixtures include deliberately adversarial submissions (infinite loop, fork 
 
 ## 30. Docker Architecture
 
-`docker-compose.yml` (local dev/demo) brings up: `postgres`, `redis`, `rabbitmq` (with management plugin), `backend`, `execution-worker`, `frontend`. The `execution-worker` container is granted access to the host's Docker daemon via the Docker socket (`/var/run/docker.sock` bind mount) so it can launch sibling sandbox containers — it does **not** run Docker-in-Docker (nested daemons), which is slower and has its own privilege quirks; sibling containers via the mounted socket is the standard, lower-overhead pattern, with the accepted tradeoff that the worker process itself must be trusted (it is *our* code, not user code, that touches the socket). Language runtime images (`oj-java21`, `oj-python312`, `oj-cpp17`, etc.) are pre-built, minimal, pinned-version images built in CI and referenced by digest, never `latest`.
+`docker-compose.yml` (local dev/demo) brings up: `postgres`, `redis`, `rabbitmq` (with management plugin), `backend`, `execution-worker`, `frontend`. The `execution-worker` container is granted access to the host's Docker daemon via the Docker socket (`/var/run/docker.sock` bind mount) so it can launch sibling sandbox containers — it does **not** run Docker-in-Docker (nested daemons), which is slower and has its own privilege quirks; sibling containers via the mounted socket is the standard, lower-overhead pattern, with the accepted tradeoff that the worker process itself must be trusted (it is *our* code, not user code, that touches the socket). Language runtime images (`oj-java21`, `oj-python312`, `oj-gcc13` for C/C++, `oj-node22` for JavaScript, `oj-go123` for Go, etc.) are pre-built, minimal, pinned-version images built in CI and referenced by digest, never `latest`. C and C++ share one GCC image; each language row in `languages` names the image it runs on.
 
 ## 31. Frontend Requirements
 
-React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: landing page at `/` (hero with a mock editor window and a stack strip; CTAs to browse problems or register), problem list at `/problems` (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
+React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: landing page at `/` (hero with a mock editor window and a stack strip; CTAs to browse problems or register), problem list at `/problems` (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button; the editor highlights the selected language's syntax and loads its starter template, replacing the editor content whenever the language selection changes), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
 
 **Contests**: a list at `/contests` (Upcoming/Running/Past tabs via `?status=`, name, start/end, status chip, participant count), a contest page at `/contests/{id}` (status chip, client-side ticking countdown to start/end, description, registration button states — anonymous sign-in prompt, Register, Registered + Unregister before start, closed after start — a problems section with letter, title, difficulty, points, and a solved marker that stays locked until start, and a standings table with rank/user/points/penalty, per-problem `+N`/`−N` cells, a frozen badge, and 15s polling while running), and a contest problem page at `/contests/{id}/problems/{slug}` reusing the code editor, language selector, and submit flow with the contest context (name, points, back link) in the header.
 
@@ -666,7 +666,7 @@ The admin area also has contest pages (`/admin/contests`, `/admin/contests/new`,
 
 ## 35. MVP Scope
 
-See §9 (P0 row) for the feature list. Concretely: auth, 2+ languages (recommend Java + Python first — deliberately including the platform's own implementation language exercises the sandbox honestly), problem browse/detail, submission creation → RabbitMQ → worker → Docker sandbox → verdict, submission history, a functional (not necessarily beautiful) React frontend, admin problem/test-case CRUD.
+See §9 (P0 row) for the feature list. Concretely: auth, six languages (Java 21, Python 3.12, C 17, C++ 17, JavaScript on Node 22, Go 1.23 — deliberately including the platform's own implementation language exercises the sandbox honestly), problem browse/detail, submission creation → RabbitMQ → worker → Docker sandbox → verdict, submission history, a functional (not necessarily beautiful) React frontend, admin problem/test-case CRUD.
 
 ## 36. Future Enhancements
 
@@ -742,8 +742,8 @@ Each phase lists: objective, tasks, dependencies, expected output, definition of
 - **DoD**: duplicate-delivery test proves only one worker "wins" the lease.
 
 ### Phase 8 — Docker Sandbox
-- **Objective**: Real compile/run inside ephemeral containers for Java + Python.
-- **Tasks**: build `oj-java21`/`oj-python312` images, implement `ContainerRunner` (compile + run) per §18's flags, wall-clock watchdog, output capture/truncation.
+- **Objective**: Real compile/run inside ephemeral containers for the seeded language catalog (Java, Python, C, C++, JavaScript, Go).
+- **Tasks**: build `oj-java21`/`oj-python312`/`oj-gcc13`/`oj-node22`/`oj-go123` images, implement `ContainerRunner` (compile + run) per §18's flags, wall-clock watchdog, output capture/truncation.
 - **Dependencies**: Phase 7.
 - **Expected output**: a real submission compiles and runs inside a container with resource limits enforced.
 - **DoD**: adversarial fixtures (infinite loop → killed by watchdog, memory hog → OOM-killed, network attempt → fails) each produce the correct verdict in a Docker-gated integration test.
