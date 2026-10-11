@@ -1,5 +1,6 @@
 package com.onlinejudge.backend.api;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,11 +43,13 @@ public class ContestController {
     }
 
     @PostMapping("/{id}/register")
+    @PreAuthorize("isAuthenticated()")
     public RegistrationResponse register(@PathVariable Long id, Authentication authentication) {
         return contestPublicService.register(id, authentication.getName());
     }
 
     @DeleteMapping("/{id}/register")
+    @PreAuthorize("isAuthenticated()")
     public void unregister(@PathVariable Long id, Authentication authentication) {
         contestPublicService.unregister(id, authentication.getName());
     }
