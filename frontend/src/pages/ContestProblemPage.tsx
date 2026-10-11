@@ -4,19 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchContestProblem } from '../api/contests'
 import { fetchLanguages } from '../api/languages'
 import { createSubmission } from '../api/submissions'
-import { BOILERPLATE, CodeEditor } from '../components/CodeEditor'
+import { boilerplateFor, CodeEditor } from '../components/CodeEditor'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { LanguageSelect } from '../components/LanguageSelect'
 import { Spinner } from '../components/Spinner'
 
 const MAX_SOURCE_LENGTH = 65_536
-
-function boilerplateFor(languageName: string): string {
-  const name = languageName.toLowerCase()
-  if (name.startsWith('java')) return BOILERPLATE.java
-  if (name.startsWith('python')) return BOILERPLATE.python
-  return ''
-}
 
 export function ContestProblemPage() {
   const { id = '', slug = '' } = useParams()
@@ -54,7 +47,7 @@ export function ContestProblemPage() {
   function onLanguageChange(nextId: number) {
     setLanguageId(nextId)
     const selected = languages.data?.find((language) => language.id === nextId)
-    if (selected && sourceCode.trim() === '') setSourceCode(boilerplateFor(selected.name))
+    setSourceCode(selected ? boilerplateFor(selected.name) : '')
   }
 
   if (!validId) return <p>Problem not found.</p>
