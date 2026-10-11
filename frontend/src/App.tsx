@@ -7,6 +7,7 @@ import { ProblemListPage } from './pages/ProblemListPage'
 import { ProblemDetailPage } from './pages/ProblemDetailPage'
 import { ContestsPage } from './pages/ContestsPage'
 import { ContestDetailPage } from './pages/ContestDetailPage'
+import { ContestProblemPage } from './pages/ContestProblemPage'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireAdmin } from './auth/RequireAdmin'
 import { SubmissionResultPage } from './pages/SubmissionResultPage'
@@ -34,6 +35,14 @@ function App() {
         <Route path="problems/:slug" element={<ProblemDetailPage />} />
         <Route path="contests" element={<ContestsPage />} />
         <Route path="contests/:id" element={<ContestDetailPage />} />
+        <Route
+          path="contests/:id/problems/:slug"
+          element={
+            <RequireAuth>
+              <ContestProblemPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path="submissions/:id"
           element={
