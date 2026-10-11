@@ -11,3 +11,9 @@ app:
   security:
     jwt:
       secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtMDEyMzQ1Njc4OWFiY2RlZg==
+
+# Keeps the auto-publish scheduler effectively idle in tests; integration tests call
+# ContestPublicationService.publishContest directly (PRD §7.8).
+oj:
+  contests:
+    publish-delay-ms: 3600000
