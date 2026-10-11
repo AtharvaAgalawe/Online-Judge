@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAdminProblems } from '../../api/admin'
+import { AdminNav } from '../../components/AdminNav'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Pagination } from '../../components/Pagination'
 import { Spinner } from '../../components/Spinner'
@@ -38,6 +39,7 @@ export function AdminProblemListPage() {
   return (
     <section>
       <h1>Admin · Problems</h1>
+      <AdminNav />
       <div className="filters">
         <label>
           Search

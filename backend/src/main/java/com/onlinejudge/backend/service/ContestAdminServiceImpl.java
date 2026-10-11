@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.onlinejudge.backend.api.dto.AttachContestProblemRequest;
 import com.onlinejudge.backend.api.dto.AttachableProblemResponse;
+import com.onlinejudge.backend.api.dto.ContestAdminDetailResponse;
 import com.onlinejudge.backend.api.dto.ContestAdminSummaryResponse;
 import com.onlinejudge.backend.api.dto.ContestCreatedResponse;
 import com.onlinejudge.backend.api.dto.ContestProblemCreatedResponse;
@@ -91,6 +92,16 @@ public class ContestAdminServiceImpl implements ContestAdminService {
                 Sort.by(Sort.Direction.DESC, "startTime", "id"));
         Page<Contest> contests = contestRepository.findAll(spec, pageRequest);
         return PagedResponse.of(contests, contest -> toSummary(contest, now));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContestAdminDetailResponse detail(Long id) {
+        Contest contest = contestById(id);
+        return new ContestAdminDetailResponse(contest.getId(), contest.getName(), contest.getDescription(),
+                contest.getStartTime(), contest.getEndTime(), contest.isPrivate(), contest.getFreezeMinutes(),
+                ContestStatus.of(contest.getStartTime(), contest.getEndTime(), Instant.now()),
+                contest.getProblemsPublishedAt());
     }
 
     @Override

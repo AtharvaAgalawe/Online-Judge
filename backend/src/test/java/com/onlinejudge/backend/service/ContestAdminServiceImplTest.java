@@ -26,6 +26,7 @@ import com.onlinejudge.backend.api.dto.CreateContestRequest;
 import com.onlinejudge.backend.api.dto.UpdateContestRequest;
 import com.onlinejudge.backend.exception.BusinessRuleException;
 import com.onlinejudge.backend.exception.DuplicateResourceException;
+import com.onlinejudge.backend.exception.ResourceNotFoundException;
 import com.onlinejudge.backend.repository.ContestParticipantRepository;
 import com.onlinejudge.backend.repository.ContestProblemRepository;
 import com.onlinejudge.backend.repository.ContestRepository;
@@ -35,6 +36,7 @@ import com.onlinejudge.common.entity.Contest;
 import com.onlinejudge.common.entity.ContestProblem;
 import com.onlinejudge.common.entity.Problem;
 import com.onlinejudge.common.entity.User;
+import com.onlinejudge.common.enums.ContestStatus;
 import com.onlinejudge.common.enums.Difficulty;
 
 @ExtendWith(MockitoExtension.class)
@@ -93,6 +95,33 @@ class ContestAdminServiceImplTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessage("Contest can no longer be deleted after it has started");
         verify(contestRepository, never()).delete(any(Contest.class));
+    }
+
+    @Test
+    void detailReturnsMetadata() {
+        Contest upcoming = contest(1L, NOW.plusSeconds(3600), NOW.plusSeconds(7200));
+        when(contestRepository.findById(1L)).thenReturn(Optional.of(upcoming));
+
+        var detail = service.detail(1L);
+
+        assertThat(detail.id()).isEqualTo(1L);
+        assertThat(detail.name()).isEqualTo("Contest 1");
+        assertThat(detail.description()).isEqualTo("description");
+        assertThat(detail.startTime()).isEqualTo(upcoming.getStartTime());
+        assertThat(detail.endTime()).isEqualTo(upcoming.getEndTime());
+        assertThat(detail.isPrivate()).isFalse();
+        assertThat(detail.freezeMinutes()).isEqualTo(60);
+        assertThat(detail.status()).isEqualTo(ContestStatus.UPCOMING);
+        assertThat(detail.problemsPublishedAt()).isNull();
+    }
+
+    @Test
+    void detailMissingContestIs404() {
+        when(contestRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.detail(99L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Contest not found: 99");
     }
 
     @Test

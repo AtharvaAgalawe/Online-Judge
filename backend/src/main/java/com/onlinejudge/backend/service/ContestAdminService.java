@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.onlinejudge.backend.api.dto.AttachContestProblemRequest;
 import com.onlinejudge.backend.api.dto.AttachableProblemResponse;
+import com.onlinejudge.backend.api.dto.ContestAdminDetailResponse;
 import com.onlinejudge.backend.api.dto.ContestAdminSummaryResponse;
 import com.onlinejudge.backend.api.dto.ContestCreatedResponse;
 import com.onlinejudge.backend.api.dto.ContestProblemCreatedResponse;
@@ -18,6 +19,8 @@ import com.onlinejudge.common.enums.ContestStatus;
 public interface ContestAdminService {
 
     PagedResponse<ContestAdminSummaryResponse> list(String search, ContestStatus status, int page, int size);
+
+    ContestAdminDetailResponse detail(Long id);
 
     ContestCreatedResponse create(CreateContestRequest request, String adminUsername);
 

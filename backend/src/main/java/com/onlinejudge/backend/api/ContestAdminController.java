@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.onlinejudge.backend.api.dto.AttachContestProblemRequest;
 import com.onlinejudge.backend.api.dto.AttachableProblemResponse;
+import com.onlinejudge.backend.api.dto.ContestAdminDetailResponse;
 import com.onlinejudge.backend.api.dto.ContestAdminSummaryResponse;
 import com.onlinejudge.backend.api.dto.ContestCreatedResponse;
 import com.onlinejudge.backend.api.dto.ContestProblemCreatedResponse;
@@ -50,6 +51,11 @@ public class ContestAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return contestAdminService.list(search, status, page, size);
+    }
+
+    @GetMapping("/{id}")
+    public ContestAdminDetailResponse detail(@PathVariable Long id) {
+        return contestAdminService.detail(id);
     }
 
     @PostMapping

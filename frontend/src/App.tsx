@@ -15,6 +15,9 @@ import { HistoryPage } from './pages/HistoryPage'
 import { AdminProblemListPage } from './pages/admin/AdminProblemListPage'
 import { AdminProblemCreatePage } from './pages/admin/AdminProblemCreatePage'
 import { AdminProblemEditPage } from './pages/admin/AdminProblemEditPage'
+import { AdminContestListPage } from './pages/admin/AdminContestListPage'
+import { AdminContestCreatePage } from './pages/admin/AdminContestCreatePage'
+import { AdminContestEditPage } from './pages/admin/AdminContestEditPage'
 import { AdminSubmissionsPage } from './pages/admin/AdminSubmissionsPage'
 import { AdminQueueStatusPage } from './pages/admin/AdminQueueStatusPage'
 
@@ -85,6 +88,36 @@ function App() {
             <RequireAuth>
               <RequireAdmin>
                 <AdminProblemEditPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/contests"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminContestListPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/contests/new"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminContestCreatePage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/contests/:id"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminContestEditPage />
               </RequireAdmin>
             </RequireAuth>
           }
