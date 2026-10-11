@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.onlinejudge.backend.api.dto.ContestDetailResponse;
+import com.onlinejudge.backend.api.dto.ContestProblemDetailResponse;
 import com.onlinejudge.backend.api.dto.ContestSummaryResponse;
 import com.onlinejudge.backend.api.dto.PagedResponse;
 import com.onlinejudge.backend.api.dto.RegistrationResponse;
+import com.onlinejudge.backend.service.ContestProblemService;
 import com.onlinejudge.backend.service.ContestPublicService;
 import com.onlinejudge.common.enums.ContestStatus;
 
@@ -24,9 +26,12 @@ import com.onlinejudge.common.enums.ContestStatus;
 public class ContestController {
 
     private final ContestPublicService contestPublicService;
+    private final ContestProblemService contestProblemService;
 
-    public ContestController(ContestPublicService contestPublicService) {
+    public ContestController(ContestPublicService contestPublicService,
+                             ContestProblemService contestProblemService) {
         this.contestPublicService = contestPublicService;
+        this.contestProblemService = contestProblemService;
     }
 
     @GetMapping
@@ -40,6 +45,12 @@ public class ContestController {
     @GetMapping("/{id}")
     public ContestDetailResponse detail(@PathVariable Long id, Authentication authentication) {
         return contestPublicService.detail(id, principalOrNull(authentication));
+    }
+
+    @GetMapping("/{id}/problems/{slug}")
+    public ContestProblemDetailResponse problem(@PathVariable Long id, @PathVariable String slug,
+                                                Authentication authentication) {
+        return contestProblemService.detail(id, slug, principalOrNull(authentication));
     }
 
     @PostMapping("/{id}/register")
