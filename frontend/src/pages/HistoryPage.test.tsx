@@ -50,6 +50,10 @@ describe('HistoryPage', () => {
       { route: '/submissions' },
     )
     expect(await screen.findByText('Accepted')).toBeInTheDocument()
-    expect(screen.getByText('two-sum')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'two-sum' })).toHaveAttribute(
+      'href',
+      '/submissions/42',
+    )
+    expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument()
   })
 })
