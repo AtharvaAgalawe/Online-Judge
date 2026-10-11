@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import type { ContestProblemSummary } from './contests'
 import type {
   Difficulty,
   PagedResponse,
@@ -190,6 +191,7 @@ export interface AdminContestDetail {
   freezeMinutes: number
   status: 'UPCOMING' | 'RUNNING' | 'ENDED'
   problemsPublishedAt: string | null
+  problems: ContestProblemSummary[]
 }
 
 export interface CreateContestBody {

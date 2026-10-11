@@ -20,6 +20,7 @@ import com.onlinejudge.backend.api.dto.ContestAdminDetailResponse;
 import com.onlinejudge.backend.api.dto.ContestAdminSummaryResponse;
 import com.onlinejudge.backend.api.dto.ContestCreatedResponse;
 import com.onlinejudge.backend.api.dto.ContestProblemCreatedResponse;
+import com.onlinejudge.backend.api.dto.ContestProblemSummaryResponse;
 import com.onlinejudge.backend.api.dto.CreateContestProblemRequest;
 import com.onlinejudge.backend.api.dto.CreateContestRequest;
 import com.onlinejudge.backend.api.dto.PagedResponse;
@@ -101,7 +102,7 @@ public class ContestAdminServiceImpl implements ContestAdminService {
         return new ContestAdminDetailResponse(contest.getId(), contest.getName(), contest.getDescription(),
                 contest.getStartTime(), contest.getEndTime(), contest.isPrivate(), contest.getFreezeMinutes(),
                 ContestStatus.of(contest.getStartTime(), contest.getEndTime(), Instant.now()),
-                contest.getProblemsPublishedAt());
+                contest.getProblemsPublishedAt(), problemSummaries(id));
     }
 
     @Override
@@ -212,6 +213,15 @@ public class ContestAdminServiceImpl implements ContestAdminService {
     private int nextOrder(Long contestId) {
         return contestProblemRepository.findByContestIdOrderByDisplayOrderAsc(contestId).stream()
                 .mapToInt(ContestProblem::getDisplayOrder).max().orElse(-1) + 1;
+    }
+
+    /** Admin view has no competing caller, so the per-user solved mark is always false. */
+    private List<ContestProblemSummaryResponse> problemSummaries(Long contestId) {
+        return contestProblemRepository.findByContestIdOrderByDisplayOrderAsc(contestId).stream()
+                .map(link -> new ContestProblemSummaryResponse(link.getProblem().getId(),
+                        link.getProblem().getSlug(), link.getProblem().getTitle(),
+                        link.getProblem().getDifficulty(), link.getDisplayOrder(), link.getPoints(), false))
+                .toList();
     }
 
     private void validateWindow(Instant start, Instant end) {

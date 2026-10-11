@@ -9,6 +9,18 @@ const DETAIL = {
   id: 1, name: 'Spring Cup', description: 'Annual contest',
   startTime: '2026-03-01T10:00:00Z', endTime: '2026-03-01T12:00:00Z',
   isPrivate: false, freezeMinutes: 60, status: 'UPCOMING', problemsPublishedAt: null,
+  problems: [],
+}
+
+const ATTACHED = [
+  { problemId: 7, slug: 'two-sum', title: 'Two Sum', difficulty: 'EASY', displayOrder: 0, points: 100, solvedByMe: false },
+  { problemId: 8, slug: 'three-sum', title: 'Three Sum', difficulty: 'MEDIUM', displayOrder: 1, points: 250, solvedByMe: false },
+]
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status, headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 function renderPage() {
@@ -29,11 +41,9 @@ describe('AdminContestEditPage', () => {
   it('loads and submits metadata', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === 'PUT') {
-        return new Response(null, { status: 204 })
+        return new Response(null, { status: 200 })
       }
-      return new Response(JSON.stringify(DETAIL), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      })
+      return json(DETAIL)
     })
     vi.stubGlobal('fetch', fetchMock)
     renderPage()
@@ -49,17 +59,91 @@ describe('AdminContestEditPage', () => {
       expect(put).toBeTruthy()
       expect(JSON.parse(String(put![1]!.body))).toMatchObject({ name: 'Spring Cup 2' })
     })
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
   it('disables the form once the contest has started', async () => {
     vi.stubGlobal('fetch', vi.fn(async () =>
-      new Response(JSON.stringify({ ...DETAIL, status: 'RUNNING' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      })))
+      json({ ...DETAIL, status: 'RUNNING' })))
     renderPage()
 
     expect(await screen.findByText('This contest has started and can no longer be edited.')).toBeInTheDocument()
     expect(screen.getByLabelText('Name')).toBeDisabled()
     expect(screen.getByRole('button', { name: /save metadata/i })).toBeDisabled()
+  })
+
+  it('lists attached problems with points and order', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ ...DETAIL, problems: ATTACHED })))
+    renderPage()
+
+    expect(await screen.findByRole('link', { name: 'Two Sum' }))
+      .toHaveAttribute('href', '/admin/problems/7')
+    expect(screen.getByRole('link', { name: 'Three Sum' }))
+      .toHaveAttribute('href', '/admin/problems/8')
+    expect(screen.getByLabelText('Points for Two Sum')).toHaveValue(100)
+    expect(screen.getByLabelText('Points for Three Sum')).toHaveValue(250)
+    expect(screen.getByLabelText('Order for Two Sum')).toHaveValue(0)
+    expect(screen.getByLabelText('Order for Three Sum')).toHaveValue(1)
+  })
+
+  it('attaches a problem from the picker', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('attachable-problems')) {
+        return json([{ id: 7, slug: 'two-sum', title: 'Two Sum', difficulty: 'EASY' }])
+      }
+      if (init?.method === 'POST') return new Response(null, { status: 201 })
+      return json(DETAIL)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+
+    await screen.findByText('No problems attached yet.')
+    fireEvent.click(screen.getByRole('button', { name: 'Attach problem' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Attach' }))
+
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/admin/contests/1/problems') && call[1]?.method === 'POST')
+      expect(post).toBeTruthy()
+      expect(JSON.parse(String(post![1]!.body))).toEqual({ problemId: 7 })
+    })
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
+  it('inline create links to the test case manager', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST' && String(input).includes('/problems/new')) {
+        return json({ problemId: 42, slug: 'fresh-problem' }, 201)
+      }
+      return json(DETAIL)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+
+    fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'Fresh Problem' } })
+    fireEvent.change(screen.getByLabelText('Statement'), { target: { value: 'Add two numbers.' } })
+    fireEvent.change(screen.getByLabelText('Points'), { target: { value: '150' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create problem' }))
+
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/admin/contests/1/problems/new'))
+      expect(post).toBeTruthy()
+      expect(JSON.parse(String(post![1]!.body))).toMatchObject({ title: 'Fresh Problem', points: 150 })
+    })
+    expect(await screen.findByRole('link', { name: 'Manage test cases' }))
+      .toHaveAttribute('href', '/admin/problems/42')
+  })
+
+  it('disables problem editing once the contest has started', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      json({ ...DETAIL, status: 'RUNNING', problems: ATTACHED })))
+    renderPage()
+
+    await screen.findByRole('link', { name: 'Two Sum' })
+    expect(screen.getByRole('button', { name: 'Attach problem' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Detach' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Points for Two Sum')).not.toBeInTheDocument()
   })
 })

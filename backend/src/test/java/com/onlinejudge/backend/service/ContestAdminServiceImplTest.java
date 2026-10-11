@@ -113,6 +113,32 @@ class ContestAdminServiceImplTest {
         assertThat(detail.freezeMinutes()).isEqualTo(60);
         assertThat(detail.status()).isEqualTo(ContestStatus.UPCOMING);
         assertThat(detail.problemsPublishedAt()).isNull();
+        assertThat(detail.problems()).isEmpty();
+    }
+
+    @Test
+    void detailReturnsAttachedProblemsInDisplayOrder() {
+        Contest upcoming = contest(1L, NOW.plusSeconds(3600), NOW.plusSeconds(7200));
+        Problem first = problem(7L, false);
+        Problem second = problem(8L, false);
+        when(contestRepository.findById(1L)).thenReturn(Optional.of(upcoming));
+        when(contestProblemRepository.findByContestIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(new ContestProblem(upcoming, first, 100, 0),
+                        new ContestProblem(upcoming, second, 250, 1)));
+
+        var detail = service.detail(1L);
+
+        assertThat(detail.problems()).hasSize(2);
+        assertThat(detail.problems().get(0).problemId()).isEqualTo(7L);
+        assertThat(detail.problems().get(0).slug()).isEqualTo("problem-7");
+        assertThat(detail.problems().get(0).title()).isEqualTo("Problem 7");
+        assertThat(detail.problems().get(0).difficulty()).isEqualTo(Difficulty.EASY);
+        assertThat(detail.problems().get(0).displayOrder()).isZero();
+        assertThat(detail.problems().get(0).points()).isEqualTo(100);
+        assertThat(detail.problems().get(0).solvedByMe()).isFalse();
+        assertThat(detail.problems().get(1).problemId()).isEqualTo(8L);
+        assertThat(detail.problems().get(1).displayOrder()).isEqualTo(1);
+        assertThat(detail.problems().get(1).points()).isEqualTo(250);
     }
 
     @Test
