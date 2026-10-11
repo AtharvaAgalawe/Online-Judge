@@ -92,41 +92,6 @@ const SNIPPET: Token[][] = [
   [[null, '}']],
 ]
 
-const STACK: { label: string; icon: JSX.Element }[] = [
-  {
-    label: 'Java 21',
-    icon: (
-      <svg className="stack-strip__icon" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Python 3.12',
-    icon: (
-      <svg className="stack-strip__icon" viewBox="0 0 16 16" aria-hidden="true">
-        <polygon points="8,1.5 14.5,13.5 1.5,13.5" fill="none" stroke="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Docker Sandbox',
-    icon: (
-      <svg className="stack-strip__icon" viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    label: 'RabbitMQ',
-    icon: (
-      <svg className="stack-strip__icon" viewBox="0 0 16 16" aria-hidden="true">
-        <polygon points="8,1 15,8 8,15 1,8" fill="none" stroke="currentColor" />
-      </svg>
-    ),
-  },
-]
-
 export function LandingPage() {
   const { status } = useAuth()
   const authenticated = status === 'authenticated'
@@ -194,14 +159,6 @@ export function LandingPage() {
         </div>
       </section>
       <div className="tape" />
-      <div className="stack-strip">
-        {STACK.map((item) => (
-          <div className="stack-strip__cell" key={item.label}>
-            {item.icon}
-            {item.label}
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
