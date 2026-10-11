@@ -593,7 +593,9 @@ Test fixtures include deliberately adversarial submissions (infinite loop, fork 
 
 ## 31. Frontend Requirements
 
-React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: problem list (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
+React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: landing page at `/` (hero with a mock editor window and a stack strip; CTAs to browse problems or register), problem list at `/problems` (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
+
+Visual system: a light "blueprint/brutalist print" theme — cream paper background with a faint grid, 1px ink borders, sharp corners (radius 0), hazard-tape divider bands, serif display headings (Instrument Serif), Inter for body/UI, JetBrains Mono for code — all self-hosted (SIL OFL), served from `/fonts`. The chrome is monochrome (black/white/grays); verdicts use muted functional colors (deep green / brick red / dark amber) plus symbol prefixes so state is readable without color. Routing: `/` is the landing page; the problem list lives at `/problems`.
 
 ## 32. Admin Requirements
 
