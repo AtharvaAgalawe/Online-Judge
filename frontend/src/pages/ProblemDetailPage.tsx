@@ -5,19 +5,12 @@ import { fetchProblem, fetchProblemStats } from '../api/problems'
 import { fetchLanguages } from '../api/languages'
 import { createSubmission } from '../api/submissions'
 import { useAuth } from '../auth/AuthContext'
-import { BOILERPLATE, CodeEditor } from '../components/CodeEditor'
+import { boilerplateFor, CodeEditor } from '../components/CodeEditor'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { LanguageSelect } from '../components/LanguageSelect'
 import { Spinner } from '../components/Spinner'
 
 const MAX_SOURCE_LENGTH = 65_536
-
-function boilerplateFor(languageName: string): string {
-  const name = languageName.toLowerCase()
-  if (name.startsWith('java')) return BOILERPLATE.java
-  if (name.startsWith('python')) return BOILERPLATE.python
-  return ''
-}
 
 export function ProblemDetailPage() {
   const { slug = '' } = useParams()
@@ -54,7 +47,7 @@ export function ProblemDetailPage() {
   function onLanguageChange(nextId: number) {
     setLanguageId(nextId)
     const selected = languages.data?.find((language) => language.id === nextId)
-    if (selected && sourceCode.trim() === '') setSourceCode(boilerplateFor(selected.name))
+    setSourceCode(selected ? boilerplateFor(selected.name) : '')
   }
 
   if (detail.isPending) return <Spinner label="Loading problem" />

@@ -10,7 +10,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * @param leaseDuration   how long a claimed job stays leased before another worker may
  *                        steal it — the safety net for a worker that dies mid-job (PRD §17)
- * @param compileTimeout  hard wall-clock bound for the compile step (PRD §26)
+ * @param compileTimeout  hard wall-clock bound for the compile step (PRD §26); sized for
+ *                        Go's cold-cache stdlib build (~20s measured), which is the
+ *                        slowest toolchain in the catalog
  * @param watchdogBuffer  extra wall-clock allowance on top of the problem's time limit
  *                        before the external watchdog kills a run container (PRD §17)
  * @param maxOutputBytes  hard cap on captured stdout/stderr per run (PRD §18: 64KB)
@@ -20,7 +22,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties(prefix = "app.worker")
 public record WorkerProperties(
         @DefaultValue("60s") Duration leaseDuration,
-        @DefaultValue("10s") Duration compileTimeout,
+        @DefaultValue("60s") Duration compileTimeout,
         @DefaultValue("2s") Duration watchdogBuffer,
         @DefaultValue("65536") int maxOutputBytes,
         @DefaultValue("512") int compileMemoryMb,

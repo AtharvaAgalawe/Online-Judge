@@ -32,11 +32,21 @@ import com.onlinejudge.worker.config.WorkerProperties;
 class ContainerRunnerIntegrationTest {
 
     private static final String JAVA_COMPILE = "javac -d /box/out /box/src/Main.java";
+    private static final String C_COMPILE = "gcc -O2 -std=c17 -o /box/out/main /box/src/main.c";
+    private static final String CPP_COMPILE = "g++ -O2 -std=c++17 -o /box/out/main /box/src/main.cpp";
+    // Exact seeded command (V7__seed_more_languages.sql): the read-only rootfs forces the
+    // Go build cache into the only writable location, the /tmp tmpfs mount, and -p=1 keeps
+    // the compiler fan-out from exhausting the container's pids limit.
+    private static final String GO_COMPILE = "HOME=/tmp GOCACHE=/tmp/gocache GOPATH=/tmp/gopath"
+            + " go build -p=1 -o /box/out/main /box/src/main.go";
     private static final Duration RUN_LIMIT = Duration.ofSeconds(5);
     private static final int MEMORY_LIMIT_KB = 262_144;
 
     private static String javaImage;
     private static String pythonImage;
+    private static String gccImage;
+    private static String nodeImage;
+    private static String goImage;
 
     @Autowired
     private ContainerRunner runner;
@@ -48,6 +58,15 @@ class ContainerRunnerIntegrationTest {
                 .get();
         pythonImage = new ImageFromDockerfile("oj-python312-itest", false)
                 .withDockerfile(Path.of("../infrastructure/docker/images/oj-python312/Dockerfile"))
+                .get();
+        gccImage = new ImageFromDockerfile("oj-gcc13-itest", false)
+                .withDockerfile(Path.of("../infrastructure/docker/images/oj-gcc13/Dockerfile"))
+                .get();
+        nodeImage = new ImageFromDockerfile("oj-node22-itest", false)
+                .withDockerfile(Path.of("../infrastructure/docker/images/oj-node22/Dockerfile"))
+                .get();
+        goImage = new ImageFromDockerfile("oj-go123-itest", false)
+                .withDockerfile(Path.of("../infrastructure/docker/images/oj-go123/Dockerfile"))
                 .get();
     }
 
@@ -92,6 +111,102 @@ class ContainerRunnerIntegrationTest {
             RunOutcome run = runner.run(artifacts, pythonImage, "python3 main.py",
                     "6 7\n", RUN_LIMIT, MEMORY_LIMIT_KB);
             assertThat(run.exitCode()).isZero();
+            assertThat(run.stdout().trim()).isEqualTo("42");
+        } finally {
+            runner.deleteWorkspace(workspace);
+        }
+    }
+
+    @Test
+    void compilesAndRunsCAgainstPipedInput() throws IOException {
+        Path workspace = runner.createWorkspace();
+        try {
+            CompileOutcome compile = runner.compile(workspace, gccImage, "main.c", """
+                    #include <stdio.h>
+
+                    int main(void) {
+                        int a, b;
+                        scanf("%d %d", &a, &b);
+                        printf("%d\\n", a + b);
+                        return 0;
+                    }
+                    """, C_COMPILE);
+            assertThat(compile.success()).as(compile.compilerOutput()).isTrue();
+
+            RunOutcome run = runner.run(workspace.resolve("artifacts"), gccImage, "./main",
+                    "2 3\n", RUN_LIMIT, MEMORY_LIMIT_KB);
+            assertThat(run.exitCode()).as("stderr: %s", run.stderr()).isZero();
+            assertThat(run.stdout().trim()).isEqualTo("5");
+        } finally {
+            runner.deleteWorkspace(workspace);
+        }
+    }
+
+    @Test
+    void compilesAndRunsCppAgainstPipedInput() throws IOException {
+        Path workspace = runner.createWorkspace();
+        try {
+            CompileOutcome compile = runner.compile(workspace, gccImage, "main.cpp", """
+                    #include <iostream>
+
+                    int main() {
+                        int a, b;
+                        std::cin >> a >> b;
+                        std::cout << a * b << std::endl;
+                        return 0;
+                    }
+                    """, CPP_COMPILE);
+            assertThat(compile.success()).as(compile.compilerOutput()).isTrue();
+
+            RunOutcome run = runner.run(workspace.resolve("artifacts"), gccImage, "./main",
+                    "6 7\n", RUN_LIMIT, MEMORY_LIMIT_KB);
+            assertThat(run.exitCode()).as("stderr: %s", run.stderr()).isZero();
+            assertThat(run.stdout().trim()).isEqualTo("42");
+        } finally {
+            runner.deleteWorkspace(workspace);
+        }
+    }
+
+    @Test
+    void compilesAndRunsGoAgainstPipedInput() throws IOException {
+        Path workspace = runner.createWorkspace();
+        try {
+            CompileOutcome compile = runner.compile(workspace, goImage, "main.go", """
+                    package main
+
+                    import "fmt"
+
+                    func main() {
+                        var a, b int
+                        fmt.Scan(&a, &b)
+                        fmt.Println(a * b)
+                    }
+                    """, GO_COMPILE);
+            assertThat(compile.success()).as(compile.compilerOutput()).isTrue();
+
+            RunOutcome run = runner.run(workspace.resolve("artifacts"), goImage, "./main",
+                    "6 7\n", RUN_LIMIT, MEMORY_LIMIT_KB);
+            assertThat(run.exitCode()).as("stderr: %s", run.stderr()).isZero();
+            assertThat(run.stdout().trim()).isEqualTo("42");
+        } finally {
+            runner.deleteWorkspace(workspace);
+        }
+    }
+
+    @Test
+    void runsJavaScriptAgainstPipedInput() throws IOException {
+        Path workspace = runner.createWorkspace();
+        try {
+            // Interpreted languages skip the compile step; the source is the run mount.
+            Path artifacts = Files.createDirectories(workspace.resolve("artifacts"));
+            Files.writeString(artifacts.resolve("main.js"), """
+                    const [a, b] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number)
+                    console.log(a * b)
+                    """, StandardCharsets.UTF_8);
+
+            RunOutcome run = runner.run(artifacts, nodeImage, "node main.js",
+                    "6 7\n", RUN_LIMIT, MEMORY_LIMIT_KB);
+            assertThat(run.exitCode()).as("stderr: %s", run.stderr()).isZero();
             assertThat(run.stdout().trim()).isEqualTo("42");
         } finally {
             runner.deleteWorkspace(workspace);

@@ -7,8 +7,12 @@ import { renderWithProviders } from '../test/renderWithProviders'
 
 vi.mock('../components/CodeEditor', async () => {
   const React = await import('react')
+  const templates: Record<string, string> = {
+    'Java 21': 'java boilerplate',
+    'Python 3.12': 'python boilerplate',
+  }
   return {
-    BOILERPLATE: { java: 'java boilerplate', python: 'python boilerplate' },
+    boilerplateFor: (name: string) => templates[name] ?? '',
     CodeEditor: (props: { value: string; onChange: (value: string) => void }) =>
       React.createElement('textarea', {
         'aria-label': 'Source code',
@@ -99,6 +103,40 @@ describe('ContestProblemPage', () => {
       'href',
       '/problems/two-sum',
     )
+  })
+
+  it('replaces the editor template when the language changes', async () => {
+    localStorage.setItem('oj.refreshToken', 'refresh-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/auth/refresh')) return json({ accessToken: ACCESS, expiresIn: 900 })
+        if (url.includes('/languages'))
+          return json([
+            { id: 1, name: 'Java 21' },
+            { id: 2, name: 'Python 3.12' },
+          ])
+        return json(CONTEST_PROBLEM)
+      }),
+    )
+
+    renderWithProviders(
+      <AuthProvider>
+        <Routes>
+          <Route path="/contests/:id/problems/:slug" element={<ContestProblemPage />} />
+        </Routes>
+      </AuthProvider>,
+      { route: '/contests/1/problems/two-sum' },
+    )
+
+    const languageSelect = await screen.findByLabelText('Language')
+    fireEvent.change(languageSelect, { target: { value: '1' } })
+    const editor = screen.getByLabelText('Source code') as HTMLTextAreaElement
+    expect(editor.value).toBe('java boilerplate')
+
+    fireEvent.change(languageSelect, { target: { value: '2' } })
+    expect(editor.value).toBe('python boilerplate')
   })
 
   it('submits with the contest problem id and navigates to the result page', async () => {
