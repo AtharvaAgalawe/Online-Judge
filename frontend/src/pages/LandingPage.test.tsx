@@ -57,4 +57,17 @@ describe('LandingPage', () => {
     )
     expect(screen.queryByRole('link', { name: /create account/i })).not.toBeInTheDocument()
   })
+
+  it('shows the mock editor window and the stack strip', () => {
+    renderWithProviders(
+      <AuthProvider>
+        <LandingPage />
+      </AuthProvider>,
+    )
+    expect(screen.getByText('Main.java — two-sum')).toBeInTheDocument()
+    expect(screen.getByText('Main.java')).toBeInTheDocument()
+    expect(screen.getByText('solution.py')).toBeInTheDocument()
+    expect(screen.getByText('Docker Sandbox')).toBeInTheDocument()
+    expect(screen.getByText('RabbitMQ')).toBeInTheDocument()
+  })
 })
