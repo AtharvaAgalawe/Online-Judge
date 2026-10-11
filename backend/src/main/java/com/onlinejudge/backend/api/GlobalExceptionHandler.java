@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.onlinejudge.backend.exception.BusinessRuleException;
+import com.onlinejudge.backend.exception.ContestRegistrationRequiredException;
 import com.onlinejudge.backend.exception.DuplicateResourceException;
 import com.onlinejudge.backend.exception.IdempotencyConflictException;
 import com.onlinejudge.backend.exception.InvalidRefreshTokenException;
@@ -113,6 +114,12 @@ public class GlobalExceptionHandler {
     ProblemDetail handleForbidden(AccessDeniedException ex, HttpServletRequest request) {
         return problem(HttpStatus.FORBIDDEN, "Forbidden", "You do not have permission to access this resource",
                 request);
+    }
+
+    @ExceptionHandler(ContestRegistrationRequiredException.class)
+    ProblemDetail handleContestRegistrationRequired(ContestRegistrationRequiredException ex,
+                                                    HttpServletRequest request) {
+        return problem(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage(), request);
     }
 
     @ExceptionHandler(Exception.class)

@@ -5,6 +5,9 @@ import { RegisterPage } from './pages/RegisterPage'
 import { LandingPage } from './pages/LandingPage'
 import { ProblemListPage } from './pages/ProblemListPage'
 import { ProblemDetailPage } from './pages/ProblemDetailPage'
+import { ContestsPage } from './pages/ContestsPage'
+import { ContestDetailPage } from './pages/ContestDetailPage'
+import { ContestProblemPage } from './pages/ContestProblemPage'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireAdmin } from './auth/RequireAdmin'
 import { SubmissionResultPage } from './pages/SubmissionResultPage'
@@ -12,6 +15,9 @@ import { HistoryPage } from './pages/HistoryPage'
 import { AdminProblemListPage } from './pages/admin/AdminProblemListPage'
 import { AdminProblemCreatePage } from './pages/admin/AdminProblemCreatePage'
 import { AdminProblemEditPage } from './pages/admin/AdminProblemEditPage'
+import { AdminContestListPage } from './pages/admin/AdminContestListPage'
+import { AdminContestCreatePage } from './pages/admin/AdminContestCreatePage'
+import { AdminContestEditPage } from './pages/admin/AdminContestEditPage'
 import { AdminSubmissionsPage } from './pages/admin/AdminSubmissionsPage'
 import { AdminQueueStatusPage } from './pages/admin/AdminQueueStatusPage'
 
@@ -30,6 +36,16 @@ function App() {
         <Route index element={<LandingPage />} />
         <Route path="problems" element={<ProblemListPage />} />
         <Route path="problems/:slug" element={<ProblemDetailPage />} />
+        <Route path="contests" element={<ContestsPage />} />
+        <Route path="contests/:id" element={<ContestDetailPage />} />
+        <Route
+          path="contests/:id/problems/:slug"
+          element={
+            <RequireAuth>
+              <ContestProblemPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path="submissions/:id"
           element={
@@ -72,6 +88,36 @@ function App() {
             <RequireAuth>
               <RequireAdmin>
                 <AdminProblemEditPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/contests"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminContestListPage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/contests/new"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminContestCreatePage />
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="admin/contests/:id"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminContestEditPage />
               </RequireAdmin>
             </RequireAuth>
           }

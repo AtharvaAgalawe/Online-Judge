@@ -63,7 +63,9 @@ function send(path: string, init: RequestInit, token: string | null): Promise<Re
 
 async function parseBody<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T
-  return (await response.json()) as T
+  const text = await response.text()
+  if (text === '') return undefined as T
+  return JSON.parse(text) as T
 }
 
 export async function apiFetch<T>(

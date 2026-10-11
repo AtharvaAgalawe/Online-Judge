@@ -42,7 +42,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh").permitAll()
                         // Public browsing (PRD §7.1) — writes stay protected.
                         .requestMatchers(HttpMethod.GET, "/api/v1/problems", "/api/v1/problems/**",
-                                "/api/v1/languages").permitAll()
+                                "/api/v1/languages", "/api/v1/contests", "/api/v1/contests/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         // Deliberately public developer tooling, not part of the product surface.
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

@@ -130,6 +130,22 @@ Each major feature below follows: *Why it exists → User story → Inputs → O
   - **Queue status is database-derived, not RabbitMQ broker depth.** The snapshot is computed from `execution_jobs` + `submissions` (lease state: `queued`, `activeLease`, `staleLease`, `retried`, `oldestQueuedAgeSeconds`, and the `stale` job list). It deliberately does **not** query the RabbitMQ broker's queue depth, so it reports what the database actually knows about job state rather than claiming a broker metric the backend never reads (AGENTS.md §11/§14 — do not oversell what is measured).
   - The admin area is guarded **client-side for UX** (`RequireAdmin` route wrapper renders a "Forbidden" view for non-admins) and **enforced server-side** by the service/controller `@PreAuthorize` checks above. The client guard is convenience only; it is never the access-control boundary.
 
+### 7.8 Contests
+- **Why**: A timed contest is the canonical competitive-programming format; it adds scheduling, a visibility window for otherwise-hidden problems, and a scoring/standings surface on top of the problem-solving core.
+- **User story**: As an admin, I want to create a contest, attach unpublished problems (or author new ones inline), and have a public contest's problems become part of the public catalog once it ends. As a solver, I want to register before it starts, read and submit the contest problems while it runs, and track my standing.
+- **Inputs**: admin — `{name, description, startTime, endTime, isPrivate, freezeMinutes}`, attach `{problemId, points}` or inline create `{title, statement, difficulty, timeLimitMs, memoryLimitKb, points}`; solver — register/unregister, submissions to contest problems.
+- **Outputs**: contest list (`{id, name, startTime, endTime, status, participantCount, problemCount}`), contest detail (`{..., freezeMinutes, registered, registrationOpen, problemsRevealed, problems[]}`, problems `null` while unrevealed), contest problem statement + sample tests + points + contest context, standings (`{frozen, frozenAt, rows[{rank, username, totalPoints, penalty, problems[{problemId, solved, wrongAttempts, acceptedAtMinute}]}]}`).
+- **Dependencies**: `contests`, `contest_problems`, `contest_participants` (+ V6, §13), the existing submission pipeline (one contest-aware validation branch in `SubmissionCreator`), Redis (standings cache, §24), the scheduled auto-publish job (§27).
+- **Rules**:
+  - **Contest problems are unpublished problems.** Attaching accepts only problems that are unpublished and not attached to another contest (one contest per problem, enforced by a unique index). Inline creation authors a normal unpublished problem and attaches it; test cases are then managed through the existing admin problem/test-case endpoints.
+  - **Registration** is available for public contests from creation until `start_time`: register is idempotent, unregister is allowed before start only, and both are closed afterwards (400).
+  - **Access window**: before start, neither the problem list nor statements are revealed to non-admins. While `RUNNING`, registered participants may view statements and submit; an unregistered non-admin gets 403 (`ContestRegistrationRequiredException`, "Register for this contest to submit"), and admins bypass registration for testing. After `ENDED`, a contest problem is readable (and submittable as a normal problem) once published. Private contests are admin-only and unlisted everywhere; every denial is a 404 so private/locked contests stay indistinguishable from missing ones.
+  - **Auto-publish**: a scheduled job (fixed delay, 60s) publishes each still-unpublished attached problem that has at least one test case (problems without test cases are skipped with a warning and left unpublished) for every ended **public** contest, then records `problems_published_at`; private contests are never selected. Accepted limitation: up to ~60s after `end_time` before the problems appear on `/problems`.
+  - **Standings**: the first AC per problem earns that problem's points; each terminal rejected attempt before the first AC (SYSTEM_ERROR excluded, compilation errors included) adds a 10-minute penalty; each solved problem also adds the minute of its first AC. Ranking: points DESC, penalty ASC, earliest last-AC; competition ranking for ties (1, 2, 2, 4). While `RUNNING` and within the last `freeze_minutes`, standings are a frozen snapshot cut off at `end_time - freeze_minutes` (`frozen=true`); after `ENDED` the full standings are served (`frozen=false`).
+- **Edge cases**: editing metadata, attaching/detaching/creating problems, and deleting the contest are allowed **before start only** (400 after start); deleting a contest removes its problem links and registrations, leaving the attached problems unpublished; attaching a published problem is rejected (400) and double-attach is rejected (409); `end_time` must be after `start_time`; `freezeMinutes` is 0–1440.
+- **Acceptance criteria**: public contest problems are absent from `/problems` while the contest is upcoming/running and appear after the auto-publish pass; private contests and their problems are invisible to non-admins; a registered participant's submission during a running contest flows through the normal judging pipeline; standings reflect points, penalty, and freeze correctly and are served from a 15s cache that fails open (a Redis outage recomputes rather than failing the request).
+- **Status**: Complete (2026-10-11 contests iteration). Rating/Elo and hacks remain future work (§36).
+
 ## 8. Non-Functional Requirements
 
 | Category | Requirement |
@@ -148,8 +164,8 @@ Each major feature below follows: *Why it exists → User story → Inputs → O
 |---|---|
 | P0 (MVP, must work end-to-end) | Auth, problem CRUD (admin), problem browse/detail, submission creation, RabbitMQ queue, worker + Docker sandbox for ≥2 languages, verdict engine, submission history, basic frontend |
 | P1 | Redis caching, structured logging + Actuator metrics, statistics, rate limiting, CI (build+test), OpenAPI docs |
-| P2 | Contests, admin queue-status dashboard, SSE live status, CD (image publish), Testcontainers integration suite |
-| P3 (future) | Custom checkers/partial scoring, plagiarism detection, rating system, gVisor/Kata hardening, k8s |
+| P2 | Contests (implemented — see §7.8), admin queue-status dashboard, SSE live status, CD (image publish), Testcontainers integration suite |
+| P3 (future) | Custom checkers/partial scoring, plagiarism detection, contest rating system + hacks, gVisor/Kata hardening, k8s |
 
 ## 10. System Architecture
 
@@ -365,11 +381,14 @@ CREATE TABLE contest_participants (
 );
 ```
 
+**Contest extensions (migration `V6__contests.sql`):** `contests` gains `is_private BOOLEAN NOT NULL DEFAULT FALSE` (private contests are admin-only/unlisted and their problems never auto-publish), `freeze_minutes INT NOT NULL DEFAULT 60`, and `problems_published_at TIMESTAMPTZ` (the auto-publish job's idempotency marker), plus `CHECK (end_time > start_time)` and `CHECK (freeze_minutes >= 0)`. `uq_contest_problems_problem` enforces one contest per problem (and doubles as the submission-validation lookup by `problem_id`); `idx_contests_times` serves the time-ordered contest listing; `idx_submissions_problem_time` serves the standings aggregation window.
+
 **Key query patterns this schema is optimized for:**
 - "My recent submissions" → `idx_submissions_user_time`.
 - "Has this user solved this problem?" → `idx_submissions_problem_user` filtered `verdict='ACCEPTED'`.
 - "Stuck/reconcilable jobs" → `execution_jobs` where `lease_expires_at < now()`.
 - "Sample tests for a problem page" → `idx_test_cases_problem` filtered `is_sample = true`.
+- "Contest standings within a window" → `idx_submissions_problem_time` (`problem_id`, `submitted_at`) filtered by attached problems and `[start, end)`.
 
 **Transaction boundaries:**
 - Submission creation: **one transaction** = insert `submissions` + insert `execution_jobs`. Publish happens *after* commit (never inside it — a broker call must never be part of a DB transaction).
@@ -429,6 +448,30 @@ All endpoints under `/api/v1`. Auth via `Authorization: Bearer <JWT>` unless mar
 | GET | `/submissions/{id}/status` | User (owner) / Admin | — | 200 `{status, verdict}` (lightweight polling) | 403, 404 |
 | GET | `/submissions?problemId&page&size` | User (own) / Admin (any `userId`) | — | 200 paginated history | — |
 | GET | `/submissions/{id}/stream` | User (owner) | — | SSE stream of status updates | 403, 404 |
+
+### Contests
+| Method | Path | Auth | Body | Response | Errors |
+|---|---|---|---|---|---|
+| GET | `/contests?status&page&size` | Public | — | 200 paginated `{id, name, startTime, endTime, status, participantCount, problemCount}` (public contests only) | — |
+| GET | `/contests/{id}` | Public (optional auth) | — | 200 `{..., freezeMinutes, registered, registrationOpen, problemsRevealed, problems[]\|null}` | 404 private/unknown |
+| GET | `/contests/{id}/problems/{slug}` | Public (optional auth) | — | 200 statement + sample tests + points + contest context | 404 unless admin, or registered while RUNNING, or ENDED + published |
+| GET | `/contests/{id}/standings` | Public (optional auth) | — | 200 `{frozen, frozenAt, rows[{rank, username, totalPoints, penalty, problems[{problemId, solved, wrongAttempts, acceptedAtMinute}]}]}` | 404 private/unknown |
+| POST | `/contests/{id}/register` | User | — | 200 `{registered: true}` (idempotent) | 400 closed, 404 private/unknown |
+| DELETE | `/contests/{id}/register` | User | — | 200 | 400 closed, 404 private/unknown |
+
+### Admin Contests
+| Method | Path | Auth | Body | Response | Errors |
+|---|---|---|---|---|---|
+| GET | `/admin/contests?search&status&page&size` | Admin | — | 200 paginated `{..., isPrivate, participantCount, problemCount, problemsPublishedAt}` | — |
+| GET | `/admin/contests/{id}` | Admin | — | 200 full detail incl. attached problems (unpublished visible) | 404 |
+| POST | `/admin/contests` | Admin | `{name, description, startTime, endTime, isPrivate, freezeMinutes}` | 201 `{id, name}` | 400 |
+| PUT | `/admin/contests/{id}` | Admin | same as create | 200 | 400 after start, 404 |
+| DELETE | `/admin/contests/{id}` | Admin | — | 204 | 400 after start, 404 |
+| POST | `/admin/contests/{id}/problems` | Admin | `{problemId, points}` | 201 | 400 after start/published problem, 409 already attached |
+| POST | `/admin/contests/{id}/problems/new` | Admin | `{title, statement, difficulty, timeLimitMs, memoryLimitKb, points}` | 201 `{problemId, slug}` | 400 after start/validation |
+| PUT | `/admin/contests/{id}/problems/{problemId}` | Admin | `{points, displayOrder}` | 200 | 400 after start, 404 |
+| DELETE | `/admin/contests/{id}/problems/{problemId}` | Admin | — | 204 | 400 after start, 404 |
+| GET | `/admin/contests/attachable-problems?search` | Admin | — | 200 list of unpublished, unattached problems | — |
 
 ### Admin / Observability
 | Method | Path | Auth | Response |
@@ -541,6 +584,7 @@ SUBMITTED → QUEUED → PICKED_UP → COMPILING ─┬─▶ COMPILATION_ERROR 
 | Rate limiting (submission endpoint) | Redis token bucket / fixed window counter per user | rolling window | TTL only |
 | JWT refresh-token blacklist | Redis `SET` with TTL = remaining token validity | matches token expiry | TTL only |
 | Test case content | **Never cached client-side reachable**; worker-side cache only, keyed internally, never exposed via any API cache that a client request could read | 5 min (worker-local) | On admin test-case edit |
+| Contest standings | Cache-aside, computed on demand if miss | 15s | TTL only (staleness ≤ 15s accepted); fail-open — a Redis outage recomputes and still serves the request |
 
 ## 25. Security Model
 
@@ -566,6 +610,7 @@ SUBMITTED → QUEUED → PICKED_UP → COMPILING ─┬─▶ COMPILATION_ERROR 
 - **Structured JSON logs** (Logback + `logstash-logback-encoder`) with MDC fields: `correlationId`, `submissionId`, `userId`, `status`. The `correlationId` is generated at API request time and propagated into the RabbitMQ message headers so a submission's full journey — API → queue → worker → DB — is greppable by one ID across both services' logs.
 - **Spring Boot Actuator**: `/actuator/health`, `/actuator/metrics`, `/actuator/prometheus` (Micrometer registry) exposed internally (not through the public API gateway/CORS-allowed surface).
 - **Key metrics**: submission throughput (counter), queue depth (gauge, via RabbitMQ management API or Micrometer AMQP binder), judging latency (timer, from `SUBMITTED` to terminal status), worker container concurrent count (gauge), verdict distribution (counter by verdict label), DLQ size (gauge — alertable).
+- **Contest auto-publish job** (`ContestProblemPublisher` → `ContestPublicationService`, fixed delay default 60s; first scheduled task in the codebase): `INFO` per problem published after a public contest ends, `WARN` per problem skipped because it has zero test cases, `ERROR` per contest whose publish pass fails — the `problems_published_at` marker is set only on a successful pass, so a failed contest is retried on the next tick. These logs carry `contestId`/`problemId` only, never submitted code or test-case content (AGENTS.md §14).
 - **Future enhancement** (not MVP): OpenTelemetry distributed tracing spans across API→queue→worker for visual trace waterfalls (noted in §36).
 
 ## 28. Testing Strategy
@@ -595,11 +640,15 @@ Test fixtures include deliberately adversarial submissions (infinite loop, fork 
 
 React 18 + TypeScript, component-based, feature-folder structure (`pages/`, `components/`, `hooks/`, `api/`, `types/`). Key screens: landing page at `/` (hero with a mock editor window and a stack strip; CTAs to browse problems or register), problem list at `/problems` (filter/paginate), problem detail (statement + code editor, e.g. Monaco/CodeMirror + language selector + submit button), submission result view (status polling with backoff, verdict + failed test index), submission history table, admin problem editor, admin test case manager. State: React Query (or SWR) for server state/polling, no need for Redux given the app's shape. Auth: access token in memory (not `localStorage`, to reduce XSS token-theft surface), refresh token flow handled via a silent-refresh interceptor.
 
+**Contests**: a list at `/contests` (Upcoming/Running/Past tabs via `?status=`, name, start/end, status chip, participant count), a contest page at `/contests/{id}` (status chip, client-side ticking countdown to start/end, description, registration button states — anonymous sign-in prompt, Register, Registered + Unregister before start, closed after start — a problems section with letter, title, difficulty, points, and a solved marker that stays locked until start, and a standings table with rank/user/points/penalty, per-problem `+N`/`−N` cells, a frozen badge, and 15s polling while running), and a contest problem page at `/contests/{id}/problems/{slug}` reusing the code editor, language selector, and submit flow with the contest context (name, points, back link) in the header.
+
 Visual system: a light "blueprint/brutalist print" theme — cream paper background with a faint grid, 1px ink borders, sharp corners (radius 0), hazard-tape divider bands, serif display headings (Instrument Serif), Inter for body/UI, JetBrains Mono for code — all self-hosted (SIL OFL), served from `/fonts`. The chrome is monochrome (black/white/grays); verdicts use muted functional colors (deep green / brick red / dark amber) plus symbol prefixes so state is readable without color. Routing: `/` is the landing page; the problem list lives at `/problems`.
 
 ## 32. Admin Requirements
 
 Admin UI (still React, role-gated route) for: problem CRUD with a markdown-preview statement editor, test case upload (manual entry + a bulk "paste input/output pairs" helper), publish/unpublish toggle (publishing with zero test cases is rejected by the backend — surfaced to the admin — and the UI disables the publish action until at least one test case exists), a queue-status view backed by `/admin/system/queue-status`, and a submissions browser with status/verdict filters for debugging user reports.
+
+The admin area also has contest pages (`/admin/contests`, `/admin/contests/new`, `/admin/contests/:id`): a list showing public and private contests with status, a private marker, and the problems-published marker; and an editor with a metadata form (name, description, start/end via `datetime-local` inputs converted to/from UTC, private checkbox, freeze minutes) plus a problems panel that attaches existing unpublished problems or creates one inline (title, statement, difficulty, limits, points) with a "Manage test cases" link into the existing problem editor, per-row points/order editing, and detach. All mutation controls are disabled once the contest has started, and the backend enforces the before-start guard regardless (client disabling is UX only).
 
 ## 33. Performance Requirements
 

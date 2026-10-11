@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchAdminProblem, fetchTestCases, updateProblem } from '../../api/admin'
 import type { UpdateProblemBody } from '../../api/admin'
 import type { Difficulty } from '../../api/types'
+import { AdminNav } from '../../components/AdminNav'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Spinner } from '../../components/Spinner'
 import { TestCaseEditor } from '../../components/admin/TestCaseEditor'
@@ -64,6 +65,7 @@ export function AdminProblemEditPage() {
   return (
     <section>
       <h1>Edit · {problem.title}</h1>
+      <AdminNav />
       <p>
         Status: <strong>{problem.published ? 'Published' : 'Draft'}</strong> ·{' '}
         <Link to={`/problems/${problem.slug}`}>public view</Link>

@@ -11,3 +11,10 @@ app:
   security:
     jwt:
       secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtMDEyMzQ1Njc4OWFiY2RlZg==
+
+# The auto-publish scheduler (fixedDelay) still fires once at startup; this long delay only
+# prevents repeats during tests — integration tests call ContestPublicationService.publishContest
+# directly (PRD §7.8).
+oj:
+  contests:
+    publish-delay-ms: 3600000

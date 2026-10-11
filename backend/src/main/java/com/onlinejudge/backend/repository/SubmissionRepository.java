@@ -1,5 +1,6 @@
 package com.onlinejudge.backend.repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +34,23 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long>, J
             group by s.problem.id
             """)
     List<ProblemSubmissionStats> aggregateStatsByProblemIds(Collection<Long> problemIds, Verdict accepted);
+
+    /** Problem ids the user has solved (any ACCEPTED submission) — contest "solved" marks. */
+    @Query("""
+            select distinct s.problem.id from Submission s
+            where s.user.id = :userId and s.problem.id in :problemIds and s.verdict = :verdict
+            """)
+    List<Long> findProblemIdsSolvedBy(Long userId, Collection<Long> problemIds, Verdict verdict);
+
+    /** Terminal submissions for standings within a window (index: problem_id, submitted_at). */
+    @Query("""
+            select s from Submission s
+            where s.problem.id in :problemIds
+              and s.user.id in :userIds
+              and s.submittedAt >= :start
+              and s.submittedAt < :cutoff
+              and s.verdict is not null
+            """)
+    List<Submission> findForStandings(Collection<Long> problemIds, Collection<Long> userIds,
+                                      Instant start, Instant cutoff);
 }

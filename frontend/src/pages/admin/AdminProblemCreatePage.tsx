@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { createProblem } from '../../api/admin'
+import { AdminNav } from '../../components/AdminNav'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import type { Difficulty } from '../../api/types'
 
@@ -32,6 +33,7 @@ export function AdminProblemCreatePage() {
   return (
     <section>
       <h1>New problem</h1>
+      <AdminNav />
       {mutation.isError && <ErrorBanner error={mutation.error} />}
       <form onSubmit={onSubmit}>
         <label>Title

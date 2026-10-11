@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAdminSubmissions } from '../../api/admin'
+import { AdminNav } from '../../components/AdminNav'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Pagination } from '../../components/Pagination'
 import { Spinner } from '../../components/Spinner'
@@ -49,6 +50,7 @@ export function AdminSubmissionsPage() {
   return (
     <section>
       <h1>Admin · Submissions</h1>
+      <AdminNav />
       <div className="filters">
         <label>Problem ID
           <input value={params.get('problemId') ?? ''}

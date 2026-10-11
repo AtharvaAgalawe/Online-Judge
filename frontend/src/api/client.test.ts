@@ -28,6 +28,20 @@ describe('apiFetch', () => {
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer token-1')
   })
 
+  it('resolves undefined for a success response with an empty body', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })))
+    await expect(
+      apiFetch('/api/v1/admin/contests/1', { method: 'PUT', body: '{}' }),
+    ).resolves.toBeUndefined()
+  })
+
+  it('resolves undefined for an empty 201 body', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 201 })))
+    await expect(
+      apiFetch('/api/v1/admin/contests/1/problems', { method: 'POST', body: '{}' }),
+    ).resolves.toBeUndefined()
+  })
+
   it('throws ApiError parsed from problem+json', async () => {
     vi.stubGlobal(
       'fetch',

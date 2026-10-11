@@ -19,6 +19,7 @@ export function NavBar() {
         Online Judge
       </Link>
       <Link to="/problems">Problems</Link>
+      <Link to="/contests">Contests</Link>
       {status === 'authenticated' && <Link to="/submissions">My Submissions</Link>}
       {status === 'authenticated' && user?.roles.includes('ROLE_ADMIN') && (
         <Link to="/admin/problems">Admin</Link>

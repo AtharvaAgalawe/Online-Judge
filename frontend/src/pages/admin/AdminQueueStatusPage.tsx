@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchQueueStatus } from '../../api/admin'
+import { AdminNav } from '../../components/AdminNav'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Spinner } from '../../components/Spinner'
 
@@ -17,6 +18,7 @@ export function AdminQueueStatusPage() {
   return (
     <section>
       <h1>Admin · Queue</h1>
+      <AdminNav />
       <p className="problem-meta">Database-derived lease state (not the broker queue depth).</p>
       <ul className="counter-list">
         <li>Queued: {status.queued}</li>
