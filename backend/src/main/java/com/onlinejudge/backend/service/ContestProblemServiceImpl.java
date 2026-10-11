@@ -69,8 +69,8 @@ public class ContestProblemServiceImpl implements ContestProblemService {
                 .filter(candidate -> candidate.getContest().getId().equals(contestId))
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + slug));
 
+        ContestStatus status = ContestStatus.of(contest.getStartTime(), contest.getEndTime(), Instant.now());
         if (!isAdmin) {
-            ContestStatus status = ContestStatus.of(contest.getStartTime(), contest.getEndTime(), Instant.now());
             boolean registered = caller != null
                     && contestParticipantRepository.existsByContestIdAndUserId(contestId, caller.getId());
             boolean allowed = (status == ContestStatus.RUNNING && registered)
@@ -86,6 +86,6 @@ public class ContestProblemServiceImpl implements ContestProblemService {
                 .toList();
         return new ContestProblemDetailResponse(problem.getId(), problem.getSlug(), problem.getTitle(),
                 problem.getStatement(), problem.getDifficulty(), problem.getTimeLimitMs(),
-                problem.getMemoryLimitKb(), link.getPoints(), contest.getId(), contest.getName(), samples);
+                problem.getMemoryLimitKb(), link.getPoints(), contest.getId(), contest.getName(), status, samples);
     }
 }

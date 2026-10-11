@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -159,7 +160,8 @@ public class StandingsServiceImpl implements StandingsService {
             int rank = index + 1;
             if (index > 0) {
                 Row previous = rows.get(index - 1);
-                if (previous.totalPoints == row.totalPoints && previous.penalty == row.penalty) {
+                if (previous.totalPoints == row.totalPoints && previous.penalty == row.penalty
+                        && Objects.equals(previous.lastAc, row.lastAc)) {
                     rank = ranked.get(index - 1).rank();
                 }
             }

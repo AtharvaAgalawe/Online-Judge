@@ -49,6 +49,7 @@ export interface ContestProblemDetail {
   points: number
   contestId: number
   contestName: string
+  contestStatus: ContestStatus
   sampleTestCases: SampleTestCase[]
 }
 

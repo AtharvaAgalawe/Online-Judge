@@ -221,6 +221,17 @@ class ContestPublicServiceImplTest {
         verify(contestParticipantRepository, never()).delete(any(ContestParticipant.class));
     }
 
+    @Test
+    void unregisterRejectsPrivateContest() {
+        Contest privateContest = contest(9L, "Invite Only", NOW.plusSeconds(3600), NOW.plusSeconds(7200), true);
+        when(contestRepository.findById(9L)).thenReturn(Optional.of(privateContest));
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user(11L, "alice", false)));
+
+        assertThatThrownBy(() -> service.unregister(9L, "alice"))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(contestParticipantRepository, never()).delete(any(ContestParticipant.class));
+    }
+
     private Contest contest(Long id, String name, Instant start, Instant end, boolean isPrivate) {
         Contest contest = new Contest(name, "description", start, end, isPrivate, 60,
                 new User("creator" + id, "creator" + id + "@example.com", "hash"));

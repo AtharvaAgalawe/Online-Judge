@@ -123,6 +123,9 @@ public class ContestPublicServiceImpl implements ContestPublicService {
     @PreAuthorize("isAuthenticated()")
     public void unregister(Long id, String username) {
         Contest contest = visibleContest(id, username);
+        if (contest.isPrivate()) {
+            throw new ResourceNotFoundException("Contest not found: " + id);
+        }
         requireUpcoming(contest);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User does not exist"));

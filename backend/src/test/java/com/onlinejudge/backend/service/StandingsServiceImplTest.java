@@ -230,6 +230,29 @@ class StandingsServiceImplTest {
     }
 
     @Test
+    void differentLastAcBreaksTiesOnPointsAndPenalty() {
+        Contest contest = runningContest(1L, 0);
+        User alice = user(5L, "alice", false);
+        User bob = user(6L, "bob", false);
+        Problem problem = problem(11L);
+        Instant start = contest.getStartTime();
+        stubWindow(contest,
+                List.of(new ContestProblem(contest, problem, 100, 0)),
+                List.of(new ContestParticipant(contest, alice),
+                        new ContestParticipant(contest, bob)),
+                List.of(submission(Verdict.WRONG_ANSWER, start.plusSeconds(300), problem, alice),
+                        submission(Verdict.ACCEPTED, start.plusSeconds(600), problem, alice),
+                        submission(Verdict.ACCEPTED, start.plusSeconds(1200), problem, bob)));
+
+        StandingsResponse response = service.standings(1L, null);
+
+        assertThat(response.rows()).extracting(StandingsRow::username)
+                .containsExactly("alice", "bob");
+        assertThat(response.rows()).extracting(StandingsRow::rank).containsExactly(1, 2);
+        assertThat(response.rows()).extracting(StandingsRow::penalty).containsExactly(20, 20);
+    }
+
+    @Test
     void freezeUsesSnapshotCutoff() {
         Contest contest = runningContest(1L, 60);
         User alice = user(5L, "alice", false);

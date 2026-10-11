@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   attachContestProblem,
   createContestProblemInline,
+  deleteContest,
   detachContestProblem,
   fetchAdminContest,
   fetchAttachableProblems,
@@ -104,6 +105,7 @@ function AttachedProblemRow({ contestId, problem, index, editable }: {
 export function AdminContestEditPage() {
   const { id = '' } = useParams()
   const contestId = Number(id)
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const detail = useQuery({
@@ -146,6 +148,14 @@ export function AdminContestEditPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminContest', contestId] })
       queryClient.invalidateQueries({ queryKey: ['adminContests'] })
+    },
+  })
+
+  const remove = useMutation({
+    mutationFn: () => deleteContest(contestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminContests'] })
+      navigate('/admin/contests')
     },
   })
 
@@ -207,6 +217,12 @@ export function AdminContestEditPage() {
     createInline.mutate()
   }
 
+  function onDelete() {
+    if (window.confirm(`Delete contest "${contest.name}"?`)) {
+      remove.mutate()
+    }
+  }
+
   return (
     <section>
       <h1>Edit · {contest.name}</h1>
@@ -216,6 +232,12 @@ export function AdminContestEditPage() {
         <p role="status">This contest has started and can no longer be edited.</p>
       )}
       {mutation.isError && <ErrorBanner error={mutation.error} />}
+      {remove.isError && <ErrorBanner error={remove.error} />}
+      <div className="contest-actions">
+        <button type="button" disabled={!editable || remove.isPending} onClick={onDelete}>
+          {remove.isPending ? 'Deleting…' : 'Delete contest'}
+        </button>
+      </div>
       <form onSubmit={onSubmit}>
         <fieldset disabled={!editable}>
           <label>Name

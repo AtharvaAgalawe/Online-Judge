@@ -84,6 +84,7 @@ export function ContestDetailPage() {
         {contest.registered && !contest.registrationOpen && <span className="contest-meta">Registered ✓</span>}
       </div>
       {register.isError && <ErrorBanner error={register.error} />}
+      {unregister.isError && <ErrorBanner error={unregister.error} />}
       <h2>Problems</h2>
       {!contest.problemsRevealed || !contest.problems ? (
         <p>Problems will be revealed when the contest starts.</p>

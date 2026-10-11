@@ -30,6 +30,7 @@ import com.onlinejudge.common.entity.Role;
 import com.onlinejudge.common.entity.TestCase;
 import com.onlinejudge.common.entity.User;
 import com.onlinejudge.common.enums.AppRole;
+import com.onlinejudge.common.enums.ContestStatus;
 import com.onlinejudge.common.enums.Difficulty;
 
 @ExtendWith(MockitoExtension.class)
@@ -122,6 +123,7 @@ class ContestProblemServiceImplTest {
         assertThat(response.points()).isEqualTo(250);
         assertThat(response.contestId()).isEqualTo(3L);
         assertThat(response.contestName()).isEqualTo("Open Cup");
+        assertThat(response.contestStatus()).isEqualTo(ContestStatus.RUNNING);
         assertThat(response.sampleTestCases()).hasSize(2);
         assertThat(response.sampleTestCases().get(0).input()).isEqualTo("1 2");
         assertThat(response.sampleTestCases().get(0).expectedOutput()).isEqualTo("3");
@@ -181,6 +183,7 @@ class ContestProblemServiceImplTest {
 
         assertThat(response.problemId()).isEqualTo(11L);
         assertThat(response.contestName()).isEqualTo("Past Cup");
+        assertThat(response.contestStatus()).isEqualTo(ContestStatus.ENDED);
         assertThat(response.sampleTestCases()).isEmpty();
     }
 

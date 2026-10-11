@@ -297,6 +297,59 @@ class ContestsIntegrationTest {
                 .andExpect(jsonPath("$.detail").value("Registration is closed for this contest"));
     }
 
+    @Test
+    void attachPublishedProblemIs400() throws Exception {
+        String stamp = String.valueOf(System.nanoTime());
+        String admin = adminToken("adm" + stamp);
+
+        long contestId = createUpcomingContest(admin, "Attach " + stamp, false, null);
+        long problemId = createStandaloneProblem(admin, "Published Problem " + stamp).get("id").asLong();
+        addTestCase(admin, problemId, Map.of("input", "1 2", "expectedOutput", "3"));
+        publishProblem(admin, problemId);
+
+        mockMvc.perform(post("/api/v1/admin/contests/{id}/problems", contestId)
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("problemId", problemId))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void doubleAttachIs409() throws Exception {
+        String stamp = String.valueOf(System.nanoTime());
+        String admin = adminToken("adm" + stamp);
+
+        long contestId = createUpcomingContest(admin, "Double " + stamp, false, null);
+        long problemId = createStandaloneProblem(admin, "Draft Problem " + stamp).get("id").asLong();
+        attachProblem(admin, contestId, problemId);
+
+        mockMvc.perform(post("/api/v1/admin/contests/{id}/problems", contestId)
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("problemId", problemId))))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void attachAfterStartIs400() throws Exception {
+        String stamp = String.valueOf(System.nanoTime());
+        String admin = adminToken("adm" + stamp);
+
+        Instant now = Instant.now();
+        long contestId = createContest(admin, "Started " + stamp,
+                now.minus(1, ChronoUnit.MINUTES), now.plus(1, ChronoUnit.HOURS), false, null);
+        long problemId = createStandaloneProblem(admin, "Late Problem " + stamp).get("id").asLong();
+
+        mockMvc.perform(post("/api/v1/admin/contests/{id}/problems", contestId)
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("problemId", problemId))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
     private ResultActions submit(String token, long problemId, long languageId) throws Exception {
         return mockMvc.perform(post("/api/v1/submissions")
                 .header("Authorization", "Bearer " + token)
@@ -368,6 +421,36 @@ class ContestsIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response);
+    }
+
+    private JsonNode createStandaloneProblem(String admin, String title) throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", title);
+        body.put("statement", "Given two numbers, print their sum.");
+        body.put("difficulty", "EASY");
+        String response = mockMvc.perform(post("/api/v1/admin/problems")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response);
+    }
+
+    private void publishProblem(String admin, long problemId) throws Exception {
+        mockMvc.perform(put("/api/v1/admin/problems/{id}", problemId)
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("published", true))))
+                .andExpect(status().isOk());
+    }
+
+    private void attachProblem(String admin, long contestId, long problemId) throws Exception {
+        mockMvc.perform(post("/api/v1/admin/contests/{id}/problems", contestId)
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("problemId", problemId))))
+                .andExpect(status().isCreated());
     }
 
     private JsonNode addTestCase(String token, long problemId, Map<String, Object> body) throws Exception {

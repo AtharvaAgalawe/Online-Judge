@@ -26,7 +26,10 @@ function json(body: unknown, status = 200) {
 function renderPage() {
   renderWithProviders(
     <AuthProvider>
-      <Routes><Route path="/admin/contests/:id" element={<AdminContestEditPage />} /></Routes>
+      <Routes>
+        <Route path="/admin/contests/:id" element={<AdminContestEditPage />} />
+        <Route path="/admin/contests" element={<div>admin contest list</div>} />
+      </Routes>
     </AuthProvider>,
     { route: '/admin/contests/1' },
   )
@@ -134,6 +137,26 @@ describe('AdminContestEditPage', () => {
     })
     expect(await screen.findByRole('link', { name: 'Manage test cases' }))
       .toHaveAttribute('href', '/admin/problems/42')
+  })
+
+  it('deletes the contest after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return new Response(null, { status: 204 })
+      return json(DETAIL)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete contest' }))
+
+    await waitFor(() => {
+      const del = fetchMock.mock.calls.find((call) => call[1]?.method === 'DELETE')
+      expect(del).toBeTruthy()
+      expect(String(del![0])).toBe('/api/v1/admin/contests/1')
+    })
+    expect(window.confirm).toHaveBeenCalled()
+    expect(await screen.findByText('admin contest list')).toBeInTheDocument()
   })
 
   it('disables problem editing once the contest has started', async () => {

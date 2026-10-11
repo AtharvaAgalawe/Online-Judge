@@ -29,6 +29,7 @@ const CONTEST_PROBLEM = {
   points: 100,
   contestId: 1,
   contestName: 'Spring Cup',
+  contestStatus: 'RUNNING',
   sampleTestCases: [{ input: '1 2', expectedOutput: '3', order: 1 }],
 }
 
@@ -49,7 +50,12 @@ describe('ContestProblemPage', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('renders the statement and contest context', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(CONTEST_PROBLEM)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes('/languages') ? json([]) : json(CONTEST_PROBLEM),
+      ),
+    )
 
     renderWithProviders(
       <AuthProvider>
@@ -65,6 +71,34 @@ describe('ContestProblemPage', () => {
     const contestLink = screen.getByRole('link', { name: 'Spring Cup' })
     expect(contestLink).toHaveAttribute('href', '/contests/1')
     expect(contestLink.closest('p')).toHaveTextContent('Spring Cup · 100 points')
+  })
+
+  it('links to the public problem once the contest has ended', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes('/languages')
+          ? json([])
+          : json({ ...CONTEST_PROBLEM, contestStatus: 'ENDED' }),
+      ),
+    )
+
+    renderWithProviders(
+      <AuthProvider>
+        <Routes>
+          <Route path="/contests/:id/problems/:slug" element={<ContestProblemPage />} />
+        </Routes>
+      </AuthProvider>,
+      { route: '/contests/1/problems/two-sum' },
+    )
+
+    expect(
+      await screen.findByText(/this problem is now public/i),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'problems page' })).toHaveAttribute(
+      'href',
+      '/problems/two-sum',
+    )
   })
 
   it('submits with the contest problem id and navigates to the result page', async () => {

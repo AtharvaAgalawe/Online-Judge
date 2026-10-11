@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchContestProblem } from '../api/contests'
 import { fetchLanguages } from '../api/languages'
 import { createSubmission } from '../api/submissions'
-import { useAuth } from '../auth/AuthContext'
 import { BOILERPLATE, CodeEditor } from '../components/CodeEditor'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { LanguageSelect } from '../components/LanguageSelect'
@@ -22,13 +21,14 @@ function boilerplateFor(languageName: string): string {
 export function ContestProblemPage() {
   const { id = '', slug = '' } = useParams()
   const contestId = Number(id)
+  const validId = /^\d+$/.test(id)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { status: authStatus } = useAuth()
 
   const detail = useQuery({
     queryKey: ['contestProblem', contestId, slug],
     queryFn: () => fetchContestProblem(contestId, slug),
+    enabled: validId,
   })
   const languages = useQuery({ queryKey: ['languages'], queryFn: fetchLanguages })
 
@@ -57,6 +57,7 @@ export function ContestProblemPage() {
     if (selected && sourceCode.trim() === '') setSourceCode(boilerplateFor(selected.name))
   }
 
+  if (!validId) return <p>Problem not found.</p>
   if (detail.isPending) return <Spinner label="Loading problem" />
   if (detail.isError) return <ErrorBanner error={detail.error} />
 
@@ -68,6 +69,12 @@ export function ContestProblemPage() {
       <p className="contest-meta">
         <Link to={`/contests/${contestId}`}>{problem.contestName}</Link> · {problem.points} points
       </p>
+      {problem.contestStatus === 'ENDED' && (
+        <p>
+          This problem is now public — view it on the{' '}
+          <Link to={`/problems/${problem.slug}`}>problems page</Link>.
+        </p>
+      )}
       <h1>{problem.title}</h1>
       <p className="problem-meta">
         {problem.difficulty} · {problem.timeLimitMs} ms ·{' '}
@@ -87,42 +94,36 @@ export function ContestProblemPage() {
       </ul>
 
       <h2>Submit</h2>
-      {authStatus !== 'authenticated' ? (
-        <p>
-          <Link to="/login">Log in</Link> to submit a solution.
-        </p>
-      ) : (
-        <div className="submit-panel">
-          {languages.isError && <ErrorBanner error={languages.error} />}
-          {submit.isError && <ErrorBanner error={submit.error} />}
-          <LanguageSelect
-            languages={languages.data ?? []}
-            value={languageId}
-            onChange={onLanguageChange}
-          />
-          <CodeEditor
-            value={sourceCode}
-            languageName={
-              languages.data?.find((language) => language.id === languageId)?.name ?? ''
-            }
-            onChange={setSourceCode}
-          />
-          {tooLong && <p className="error-inline">Source exceeds {MAX_SOURCE_LENGTH} characters.</p>}
-          <button
-            type="button"
-            disabled={submit.isPending || languageId === null || sourceCode.trim() === '' || tooLong}
-            onClick={() =>
-              submit.mutate({
-                sourceCode,
-                languageId: languageId!,
-                idempotencyKey: crypto.randomUUID(),
-              })
-            }
-          >
-            {submit.isPending ? 'Submitting…' : 'Submit'}
-          </button>
-        </div>
-      )}
+      <div className="submit-panel">
+        {languages.isError && <ErrorBanner error={languages.error} />}
+        {submit.isError && <ErrorBanner error={submit.error} />}
+        <LanguageSelect
+          languages={languages.data ?? []}
+          value={languageId}
+          onChange={onLanguageChange}
+        />
+        <CodeEditor
+          value={sourceCode}
+          languageName={
+            languages.data?.find((language) => language.id === languageId)?.name ?? ''
+          }
+          onChange={setSourceCode}
+        />
+        {tooLong && <p className="error-inline">Source exceeds {MAX_SOURCE_LENGTH} characters.</p>}
+        <button
+          type="button"
+          disabled={submit.isPending || languageId === null || sourceCode.trim() === '' || tooLong}
+          onClick={() =>
+            submit.mutate({
+              sourceCode,
+              languageId: languageId!,
+              idempotencyKey: crypto.randomUUID(),
+            })
+          }
+        >
+          {submit.isPending ? 'Submitting…' : 'Submit'}
+        </button>
+      </div>
     </section>
   )
 }
