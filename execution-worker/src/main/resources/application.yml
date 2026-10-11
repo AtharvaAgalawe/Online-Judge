@@ -24,7 +24,9 @@ server:
 app:
   worker:
     lease-duration: 60s
-    compile-timeout: 10s
+    # Go builds its stdlib from a cold cache on the first run (~20s measured on a modest
+    # 1-CPU compile container); other toolchains finish in well under a second.
+    compile-timeout: 60s
     watchdog-buffer: 2s
     max-output-bytes: 65536
     compile-memory-mb: 512
