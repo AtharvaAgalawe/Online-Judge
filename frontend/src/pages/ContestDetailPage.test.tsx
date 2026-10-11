@@ -73,6 +73,7 @@ describe('ContestDetailPage', () => {
       await screen.findByText('Problems will be revealed when the contest starts.'),
     ).toBeInTheDocument()
     expect(screen.queryByText('Two Sum')).not.toBeInTheDocument()
+    expect(screen.queryByText('Standings')).not.toBeInTheDocument()
   })
 
   it('shows problems and navigates to the contest problem', async () => {

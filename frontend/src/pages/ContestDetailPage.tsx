@@ -121,10 +121,14 @@ export function ContestDetailPage() {
           </tbody>
         </table>
       )}
-      <h2>Standings</h2>
-      {standings.isPending && <Spinner label="Loading standings" />}
-      {standings.isError && <ErrorBanner error={standings.error} />}
-      {standings.isSuccess && <StandingsTable standings={standings.data} />}
+      {contest.problemsRevealed && (
+        <>
+          <h2>Standings</h2>
+          {standings.isPending && <Spinner label="Loading standings" />}
+          {standings.isError && <ErrorBanner error={standings.error} />}
+          {standings.isSuccess && <StandingsTable standings={standings.data} />}
+        </>
+      )}
     </section>
   )
 }
