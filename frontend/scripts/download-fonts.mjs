@@ -36,13 +36,21 @@ async function main() {
   const rules = []
   for (const family of FAMILIES) {
     const cssUrl = `https://fonts.googleapis.com/css2?family=${family.css}&display=swap`
-    const css = await (await fetch(cssUrl, { headers: { 'User-Agent': UA } })).text()
+    const cssResponse = await fetch(cssUrl, { headers: { 'User-Agent': UA } })
+    if (!cssResponse.ok) {
+      throw new Error(`Failed to download CSS for ${family.css}: HTTP ${cssResponse.status}`)
+    }
+    const css = await cssResponse.text()
     const familyName = /font-family:\s*'([^']+)'/.exec(css)?.[1]
     const faces = parseLatinFaces(css, familyName, family.slug)
     if (faces.length === 0) throw new Error(`No latin faces found for ${family.css}`)
     for (const face of faces) {
       const file = `${face.slug}-${face.weight}${face.style === 'italic' ? '-italic' : ''}.woff2`
-      const bytes = new Uint8Array(await (await fetch(face.url)).arrayBuffer())
+      const fontResponse = await fetch(face.url)
+      if (!fontResponse.ok) {
+        throw new Error(`Failed to download ${file}: HTTP ${fontResponse.status}`)
+      }
+      const bytes = new Uint8Array(await fontResponse.arrayBuffer())
       await writeFile(path.join(outDir, file), bytes)
       rules.push(
         [

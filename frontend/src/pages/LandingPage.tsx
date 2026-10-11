@@ -133,9 +133,10 @@ export function LandingPage() {
 
   return (
     <div className="landing">
+      <div className="tape" />
       <section className="hero">
         <h1 className="hero__title">
-          {'Where Your Code Meets Its Judge'}
+          {'Where Your Code Meets Its Judge'}{' '}
           <span className="hero__title-faded">{"And 'TLE' Wasn't Your Fault"}</span>
         </h1>
         <p className="hero__sub">

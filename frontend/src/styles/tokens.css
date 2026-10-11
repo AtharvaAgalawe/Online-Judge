@@ -3,7 +3,7 @@
   --paper-raise: #faf9f6;
   --ink: #141414;
   --ink-soft: #5f5f5f;
-  --ink-faint: #9a9a9a;
+  --ink-faint: #8b8b8b;
   --grid-line: rgba(20, 20, 20, 0.07);
   --grid-line-major: rgba(20, 20, 20, 0.13);
   --tint: rgba(20, 20, 20, 0.04);
@@ -11,8 +11,8 @@
   --verdict-ok-bg: rgba(31, 111, 63, 0.08);
   --verdict-bad: #a63a31;
   --verdict-bad-bg: rgba(166, 58, 49, 0.08);
-  --verdict-warn: #8a6a00;
-  --verdict-warn-bg: rgba(138, 106, 0, 0.1);
+  --verdict-warn: #7a5a00;
+  --verdict-warn-bg: rgba(122, 90, 0, 0.1);
   --verdict-pending: #5f5f5f;
   --verdict-pending-bg: rgba(95, 95, 95, 0.08);
   --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
