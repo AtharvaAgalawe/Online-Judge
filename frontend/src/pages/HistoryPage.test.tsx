@@ -50,10 +50,34 @@ describe('HistoryPage', () => {
       { route: '/submissions' },
     )
     expect(await screen.findByText('Accepted')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'two-sum' })).toHaveAttribute(
+    expect(screen.getByRole('columnheader', { name: '#' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'ID' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '1' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '42' })).toHaveAttribute(
       'href',
       '/submissions/42',
     )
-    expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument()
+    expect(screen.getByText('two-sum')).toBeInTheDocument()
+  })
+
+  it('continues row numbering across pages', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ ...PAGE, page: 2 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+    renderWithProviders(
+      <AuthProvider>
+        <Routes>
+          <Route path="/submissions" element={<HistoryPage />} />
+        </Routes>
+      </AuthProvider>,
+      { route: '/submissions?page=2' },
+    )
+    expect(await screen.findByRole('cell', { name: '41' })).toBeInTheDocument()
   })
 })
