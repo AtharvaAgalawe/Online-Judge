@@ -489,7 +489,7 @@ All endpoints under `/api/v1`. Auth via `Authorization: Bearer <JWT>` unless mar
 - **Password storage**: BCrypt (cost factor 12).
 - **Roles**: `ROLE_USER`, `ROLE_ADMIN` via `roles`/`user_roles`. Enforced with `@PreAuthorize("hasRole('ADMIN')")` at the service layer (not just controller annotations — see AGENTS.md security rules) so authorization survives even if a controller boundary is bypassed.
 - **Token revocation**: logout adds the refresh token (or its hash) to a Redis blacklist with TTL = remaining validity; access-token revocation is not attempted (short lifetime makes it unnecessary — accepted tradeoff for MVP simplicity over building a full revocation list for access tokens).
-- **CORS**: explicit allow-list of the frontend origin(s); credentials mode off (tokens sent via header, not cookies, to avoid CSRF surface).
+- **CORS**: explicit allow-list of separately hosted frontend origin(s); credentials mode off (tokens sent via header, not cookies, to avoid CSRF surface). Because TLS terminates at the edge (Caddy or a tunnel), an origin whose **host** matches the `Host` the request was addressed to is also accepted regardless of scheme/port: the SPA and API are same-origin even though the backend only sees plain HTTP, and a browser cannot forge `Host` for another site.
 - **Ownership checks**: any submission-scoped endpoint checks `submission.userId == principal.id OR principal.hasRole(ADMIN)` in the service layer, never trusting a path/query `userId` from the client for authorization decisions.
 
 ## 17. Submission Lifecycle

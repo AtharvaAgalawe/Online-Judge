@@ -12,6 +12,11 @@ spring:
 
 server:
   port: 8080
+  # Caddy terminates TLS and forwards X-Forwarded-Proto/Host. Without this, the backend
+  # still sees http://backend:8080 and treats the SPA's own requests as cross-origin, so
+  # a POST (login) is rejected with "Invalid CORS request" unless the tunnel URL happens
+  # to be in CORS_ALLOWED_ORIGINS. Same-origin traffic must not depend on that allow-list.
+  forward-headers-strategy: framework
 
 oj:
   contests:

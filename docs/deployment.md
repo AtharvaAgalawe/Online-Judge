@@ -306,8 +306,16 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /Users/mann/.oj/workspace:/Users/mann/.oj/workspace
+  frontend:
+    # Loopback only, and no 443: Colima forwards published ports with a listener on *:PORT,
+    # which occupies the Tailscale IP's 443 and breaks Tailscale Funnel (the TLS handshake
+    # reaches Colima's ssh mux instead of tailscaled). The demo edge is plain HTTP on :80.
+    ports: !override
+      - "127.0.0.1:80:80"
 EOF
 ```
+
+`ports: !override` (Compose 2.24+) replaces the base port list instead of appending to it.
 
 The socket GID is **not** the host's `docker` group here; read it from the daemon:
 
@@ -321,13 +329,22 @@ Keep the file **outside** the repository (it contains a machine-specific path, n
 ### 16.2 Start the stack
 
 ```bash
-SITE_ADDRESS=:80 PUBLIC_ORIGIN=http://localhost DOCKER_GID=991 \
+SITE_ADDRESS=:80 \
+PUBLIC_ORIGIN=http://localhost \
+DOCKER_GID=991 \
 docker compose -f infrastructure/docker-compose.prod.yml -f ~/.oj-laptop.yml \
   --env-file infrastructure/.env up -d --wait
 ```
 
 `SITE_ADDRESS=:80` keeps Caddy on plain HTTP locally; the tunnel terminates TLS. Do not set a
 domain here — Caddy would try to issue a certificate for a name it does not serve.
+
+`PUBLIC_ORIGIN` is the CORS allow-list for a genuinely separate frontend host; the demo tunnel
+does **not** need to be listed. The SPA's own calls are same-origin, and the backend allows an
+`Origin` whose host matches the host the request was addressed to, regardless of scheme — the
+tunnel terminates TLS, so the browser says `https` while the backend only sees `http`. This is
+why a changing quick-tunnel hostname no longer breaks login. A request from a different host is
+still rejected with `403 Invalid CORS request`.
 
 ### 16.3 Public HTTPS URL
 
@@ -339,8 +356,12 @@ Two options, both free and both outbound-only (campus/home routers need no port 
 | **Cloudflare Quick Tunnel** | `cloudflared tunnel --url http://localhost:80` | random `https://<words>.trycloudflare.com` | No account; URL changes every restart |
 
 Tailscale setup on the laptop: install the app (`brew install --cask tailscale-app`), log in, then
-`tailscale funnel --bg 80` (the CLI enables HTTPS certificates and the funnel policy on first use;
-`tailscale funnel status` shows the mapping). Verify from outside the machine:
+enable **HTTPS Certificates** once at <https://login.tailscale.com/admin/dns> (the toggle is on
+that DNS page). Without it, `tailscale funnel` fails with
+`500 Internal Server Error: your Tailscale account does not support getting TLS certs`, and
+`tailscale status --json` reports `"CertDomains": null`. Then run `tailscale funnel --bg 80`;
+the setting persists across reboots, so the URL survives restarts. `tailscale funnel status`
+shows the mapping. Verify from outside the machine:
 
 ```bash
 curl -s https://<machine>.<tailnet>.ts.net/actuator/health     # {"status":"UP"}
@@ -375,6 +396,7 @@ shares the host's CPU. Migrate to the single-VM setup in §§3–9 as soon as a 
 | `frontend` exits, Caddy logs "no such host" | DNS for `SITE_ADDRESS` not resolvable yet |
 | HTTPS certificate not issued | Port 80 blocked, DNS wrong, or ACME rate limit |
 | `502` from the edge | Backend unhealthy: `docker compose ps`, then `logs backend` |
+| Login returns `403 Invalid CORS request` | The `Origin` host differs from the `Host` the backend received. With the bundled Caddy edge this should not happen; check that the proxy preserves `Host` (or set `CORS_ALLOWED_ORIGINS` for a separately hosted frontend). |
 | Backend won't start: JWT error | `JWT_SECRET` missing or decodes to < 32 bytes |
 | Backend won't start: DB auth failed | `postgres-data` volume was initialized with different credentials — `down -v` or fix `.env` |
 | Submissions stuck in `QUEUED` | Worker not running, or not connected to RabbitMQ |
