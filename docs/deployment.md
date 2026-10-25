@@ -29,14 +29,16 @@ Recommended hosts, cheapest first (prices are approximate, check before ordering
 | AWS Lightsail | 4 vCPU / 16 GB | 320 GB SSD | Pricier, but one flat bill |
 | Vultr / OVH / Scaleway | 4 vCPU / 8 GB | varies | Equivalent |
 
-**Use an x86_64 VM.** The judge runtime images pin amd64 base-image digests
-(`infrastructure/docker/images/*/Dockerfile`); on an arm64 host (Hetzner CAX, Ampere,
-Apple Silicon) those digests do not resolve and the builds fail. Re-pinning arm64 digests
-is a separate change.
+**Both x86_64 and arm64 hosts work.** The judge images pin their bases by *manifest-list*
+digest (`infrastructure/docker/images/*/Dockerfile`), so Docker resolves the right
+architecture; arm64 hosts (Oracle Ampere, Hetzner CAX, Apple Silicon) need no changes.
 
 Sizing rationale: the worker runs 4 concurrent consumers, and each Go/Python/Java compile
 container is capped at 512 MB. 4 vCPU / 8 GB keeps four compiles plus the API and datastores
 inside the box without oversubscription (oversubscription corrupts TLE timings, PRD §34).
+On a smaller box, set `WORKER_CONCURRENCY` in `.env` to the vCPU count (e.g. `2` on a 2-core
+VM) — run containers each request a full core, so more consumers than cores makes
+TIME_LIMIT_EXCEEDED results unreliable. Minimum viable: 2 vCPU / 4 GB.
 
 ## 2. Before you start
 
@@ -100,6 +102,9 @@ PUBLIC_ORIGIN=https://oj.example.com
 
 # GID of the host's docker group, so the worker container can open the mounted socket
 DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+
+# Consumers = vCPU count (lower this on a 2-core VM; higher is harmful, not faster)
+WORKER_CONCURRENCY=4
 
 # Bootstrap exactly one admin (turn off again after the first successful start)
 BOOTSTRAP_ADMIN_ENABLED=false

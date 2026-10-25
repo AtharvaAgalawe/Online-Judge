@@ -113,6 +113,10 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       DOCKER_HOST: unix:///var/run/docker.sock
+      # Keep consumers ≤ vCPUs: run containers get a full core each, and oversubscription makes
+      # TLE verdicts unreliable (PRD §34). On a 2-core VM set WORKER_CONCURRENCY=2.
+      SPRING_RABBITMQ_LISTENER_SIMPLE_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+      SPRING_RABBITMQ_LISTENER_SIMPLE_PREFETCH: ${WORKER_CONCURRENCY:-4}
     volumes:
       # Sibling sandbox containers come from the host daemon (PRD §30), never Docker-in-Docker.
       - /var/run/docker.sock:/var/run/docker.sock
