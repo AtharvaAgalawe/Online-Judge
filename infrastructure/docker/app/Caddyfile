@@ -1,0 +1,33 @@
+# Edge for the frontend image. SITE_ADDRESS is a domain (automatic HTTPS via Let's Encrypt)
+# or ":80" for a plain-HTTP IP-only host. The SPA calls relative /api/v1/... paths, so the
+# proxy keeps everything same-origin (no CORS involvement in normal traffic).
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+	root * /srv
+
+	# Backend API. No trailing slash: /api/v1/... is preserved.
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:backend:8080}
+	}
+
+	# Public health probe (already permitAll in SecurityConfig) for uptime monitoring.
+	handle /actuator/health {
+		reverse_proxy {$API_UPSTREAM:backend:8080}
+	}
+
+	# SPA deep links (/problems/x, /submissions/42) fall back to index.html.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+
+	@immutable path /assets/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

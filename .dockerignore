@@ -1,0 +1,14 @@
+# Build context for the application images (infrastructure/docker/app/*.Dockerfile).
+# Keep it small and keep secrets out of every image layer (AGENTS.md §24).
+
+.git
+.github
+docs
+**/target
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/*.log
+.DS_Store
