@@ -43,11 +43,16 @@ online-judge/
 ├── frontend/                        # React + TypeScript
 │   └── src/{pages,components,hooks,api,types}/
 ├── infrastructure/
-│   ├── docker-compose.yml
-│   └── docker/images/               # Language runtime Dockerfiles (oj-java21, oj-python312, ...)
+│   ├── docker-compose.yml          # local dev stack (datastores)
+│   ├── docker-compose.prod.yml     # full production stack for a single VM
+│   └── docker/
+│       ├── app/                     # backend / execution-worker / frontend images + Caddyfile
+│       └── images/                   # Language runtime Dockerfiles (oj-java21, oj-python312, ...)
 ├── docs/
 │   ├── PRD.md
 │   ├── AGENTS.md
+│   ├── deployment.md                # production runbook (host, TLS, ops)
+│   ├── decisions/                   # recorded architecture decisions
 │   └── api/                          # generated OpenAPI spec
 └── .github/workflows/{ci.yml,cd.yml}
 ```

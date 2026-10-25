@@ -1,0 +1,154 @@
+# Production stack for a single VM (PRD §30, docs/deployment.md).
+#
+#   docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env up -d --build
+#
+# Secrets come from infrastructure/.env (git-ignored, chmod 600) — never a literal value in
+# this file (AGENTS.md §24). Only the frontend publishes host ports; Postgres, Redis and
+# RabbitMQ are reachable on the compose network alone.
+name: online-judge-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17.5-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: onlinejudge
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d onlinejudge"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  backend:
+    image: ${BACKEND_IMAGE:-online-judge/backend:local}
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/app/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      # In-network addresses override the host-facing values in infrastructure/.env.
+      DB_URL: jdbc:postgresql://postgres:5432/onlinejudge
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost}
+      BOOTSTRAP_ADMIN_ENABLED: ${BOOTSTRAP_ADMIN_ENABLED:-false}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    logging: *logging
+
+  worker:
+    image: ${WORKER_IMAGE:-online-judge/execution-worker:local}
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/app/worker.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/onlinejudge
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      # Sibling sandbox containers come from the host daemon (PRD §30), never Docker-in-Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Bind-mount sources are resolved on the HOST, so this path must be identical inside
+      # and outside the worker container: /var/lib/oj/workspace -> /var/lib/oj/workspace.
+      - /var/lib/oj/workspace:/var/lib/oj/workspace
+    # Docker socket is root:docker 660 — grant the container's supplementary group, don't run as root.
+    group_add: ["${DOCKER_GID:-999}"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    logging: *logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-online-judge/frontend:local}
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/app/frontend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      API_UPSTREAM: backend:8080
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    logging: *logging
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  caddy-data:
+  caddy-config:
