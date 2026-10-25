@@ -113,6 +113,46 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void proxiedLoginIsTreatedAsSameOriginAndSucceeds() throws Exception {
+        register("erin", "erin@example.com");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header("Origin", "https://oj.example.com")
+                        .header("X-Forwarded-Proto", "https")
+                        .header("X-Forwarded-Host", "oj.example.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new Login("erin", "password123"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void tlsTerminatingProxySameHostDifferentSchemeIsAccepted() throws Exception {
+        register("gina", "gina@example.com");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header("Host", "oj.example.com")
+                        .header("Origin", "https://oj.example.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new Login("gina", "password123"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void genuinelyCrossOriginLoginIsStillRejectedByCors() throws Exception {
+        register("frank", "frank@example.com");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header("Origin", "https://evil.example")
+                        .header("X-Forwarded-Proto", "https")
+                        .header("X-Forwarded-Host", "oj.example.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new Login("frank", "password123"))))
+                .andExpect(status().isForbidden());
+    }
+
     private void register(String username, String email) throws Exception {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

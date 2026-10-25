@@ -37,8 +37,9 @@ Hard constraints found while implementing this:
 
 - Deploying is one command per host, but the host is a single failure domain: Postgres, Redis,
   and RabbitMQ have volumes, not replicas (PRD §34 documents the scale-out path).
-- The VM must be **x86_64** while the judge images pin amd64 digests; arm64 support means
-  re-pinning those images (deferred, not blocked).
+- Both x86_64 and arm64 hosts are supported: the judge base images are pinned by manifest-list
+  digest, so arm64 (Oracle Ampere, Hetzner CAX) needs no re-pinning. Throughput tracks core count,
+  and `WORKER_CONCURRENCY` must not exceed the vCPU count or TLE verdicts lose meaning.
 - The application still runs on the default `local` Spring profile; adding a `prod` profile is
   a follow-up that does not change this topology.
 - `cd.yml` (PRD Phase 16) stays unimplemented; images are built on the host by Compose. Setting

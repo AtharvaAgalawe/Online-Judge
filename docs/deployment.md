@@ -23,20 +23,22 @@ Recommended hosts, cheapest first (prices are approximate, check before ordering
 
 | Host | Plan | Spec | Notes |
 |---|---|---|---|
-| **Hetzner Cloud** | **CPX31** (recommended) | 4 vCPU / 8 GB / 160 GB, x86_64 | Best price/performance; pick an x86_64 plan (CX/CPX), **not** CAX (arm64) |
+| **Hetzner Cloud** | **CPX31** (recommended) | 4 vCPU / 8 GB / 160 GB, x86_64 | Best price/performance |
 | Hetzner Cloud | CX32 | 4 vCPU / 8 GB / 80 GB, x86_64 | Cheaper, last-gen CPU |
 | DigitalOcean | Basic 4 vCPU / 8 GB | 160 GB SSD | $48/mo; simplest docs/UI |
 | AWS Lightsail | 4 vCPU / 16 GB | 320 GB SSD | Pricier, but one flat bill |
 | Vultr / OVH / Scaleway | 4 vCPU / 8 GB | varies | Equivalent |
 
-**Use an x86_64 VM.** The judge runtime images pin amd64 base-image digests
-(`infrastructure/docker/images/*/Dockerfile`); on an arm64 host (Hetzner CAX, Ampere,
-Apple Silicon) those digests do not resolve and the builds fail. Re-pinning arm64 digests
-is a separate change.
+**Both x86_64 and arm64 hosts work.** The judge images pin their bases by *manifest-list*
+digest (`infrastructure/docker/images/*/Dockerfile`), so Docker resolves the right
+architecture; arm64 hosts (Oracle Ampere, Hetzner CAX, Apple Silicon) need no changes.
 
 Sizing rationale: the worker runs 4 concurrent consumers, and each Go/Python/Java compile
 container is capped at 512 MB. 4 vCPU / 8 GB keeps four compiles plus the API and datastores
 inside the box without oversubscription (oversubscription corrupts TLE timings, PRD §34).
+On a smaller box, set `WORKER_CONCURRENCY` in `.env` to the vCPU count (e.g. `2` on a 2-core
+VM) — run containers each request a full core, so more consumers than cores makes
+TIME_LIMIT_EXCEEDED results unreliable. Minimum viable: 2 vCPU / 4 GB.
 
 ## 2. Before you start
 
@@ -100,6 +102,9 @@ PUBLIC_ORIGIN=https://oj.example.com
 
 # GID of the host's docker group, so the worker container can open the mounted socket
 DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+
+# Consumers = vCPU count (lower this on a 2-core VM; higher is harmful, not faster)
+WORKER_CONCURRENCY=4
 
 # Bootstrap exactly one admin (turn off again after the first successful start)
 BOOTSTRAP_ADMIN_ENABLED=false
@@ -268,11 +273,121 @@ in a secrets manager, never in git.
   (PRD §18/§25). A host-level kernel exploit is out of scope of what Docker can prevent.
 - `cd.yml` (PRD Phase 16) is not built yet: deployment builds images on the VM. That takes a
   few minutes and needs network access to Maven Central, npm, and Docker Hub.
-- The stack targets **Linux**. On Docker Desktop / Colima the daemon runs inside a VM, so a
-  nested bind-mount source (the worker's workspace) is resolved inside that VM; the containerized
-  worker is not expected to judge there. For macOS development use the host-process workflow in
-  the README instead of the prod compose file.
+- The stack targets **Linux**, but it also runs on a Mac for a demo through Docker Desktop/Colima.
+  There the daemon lives in a VM, so the worker must use a workspace under the host's home
+  directory (the VM does not see `/var/lib/oj`) and run as the desktop user with the socket's GID.
+  See §16 for the override file and the tunnel that makes it reachable.
 - One host = one failure domain. Postgres/Redis/RabbitMQ have volumes but no replica.
+
+## 16. Demo on a laptop (no server, free public URL)
+
+When there is no VM and the demo is "tomorrow", run the same compose stack on the laptop and put
+a tunnel in front of it. Nothing in the application changes: Caddy still owns port 80 and the SPA
+still calls relative `/api` paths, so the tunnel only forwards HTTPS → `localhost:80`.
+
+**Requirements:** the laptop stays awake, online, and lid-open (or clamshell with
+`sudo pmset -a disablesleep 1`) for the whole demo. Sleep = offline.
+
+### 16.1 macOS override
+
+On macOS the daemon runs inside a VM (Colima/Docker Desktop), so the worker's workspace cannot be
+`/var/lib/oj/workspace` — that path inside the VM is not the host's. Point it at a `$HOME`
+directory, run the worker as the desktop user, and join the socket's group:
+
+```bash
+mkdir -p ~/.oj/workspace
+cat > ~/.oj-laptop.yml <<'EOF'
+services:
+  worker:
+    user: "501:20"                                  # id -u / id -g of the desktop user
+    group_add: ["991"]                              # GID of docker.sock inside the VM, see below
+    environment:
+      JAVA_TOOL_OPTIONS: "-Djava.io.tmpdir=/Users/mann/.oj/workspace"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/mann/.oj/workspace:/Users/mann/.oj/workspace
+  frontend:
+    # Loopback only, and no 443: Colima forwards published ports with a listener on *:PORT,
+    # which occupies the Tailscale IP's 443 and breaks Tailscale Funnel (the TLS handshake
+    # reaches Colima's ssh mux instead of tailscaled). The demo edge is plain HTTP on :80.
+    ports: !override
+      - "127.0.0.1:80:80"
+EOF
+```
+
+`ports: !override` (Compose 2.24+) replaces the base port list instead of appending to it.
+
+The socket GID is **not** the host's `docker` group here; read it from the daemon:
+
+```bash
+docker run --rm -v /var/run/docker.sock:/s --entrypoint sh postgres:17.5-alpine -c 'stat -c %g /s'
+```
+
+Use `id -u` / `id -g` instead of the literal `501`/`20` if the Mac account is not the first user.
+Keep the file **outside** the repository (it contains a machine-specific path, not project config).
+
+### 16.2 Start the stack
+
+```bash
+SITE_ADDRESS=:80 \
+PUBLIC_ORIGIN=http://localhost \
+DOCKER_GID=991 \
+docker compose -f infrastructure/docker-compose.prod.yml -f ~/.oj-laptop.yml \
+  --env-file infrastructure/.env up -d --wait
+```
+
+`SITE_ADDRESS=:80` keeps Caddy on plain HTTP locally; the tunnel terminates TLS. Do not set a
+domain here — Caddy would try to issue a certificate for a name it does not serve.
+
+`PUBLIC_ORIGIN` is the CORS allow-list for a genuinely separate frontend host; the demo tunnel
+does **not** need to be listed. The SPA's own calls are same-origin, and the backend allows an
+`Origin` whose host matches the host the request was addressed to, regardless of scheme — the
+tunnel terminates TLS, so the browser says `https` while the backend only sees `http`. This is
+why a changing quick-tunnel hostname no longer breaks login. A request from a different host is
+still rejected with `403 Invalid CORS request`.
+
+### 16.3 Public HTTPS URL
+
+Two options, both free and both outbound-only (campus/home routers need no port forwarding):
+
+| Tunnel | Command | Hostname | Notes |
+|---|---|---|---|
+| **Tailscale Funnel** | `tailscale funnel --bg 80` | stable `https://<machine>.<tailnet>.ts.net` | Needs the free Tailscale app + login; stable across restarts — preferred for a graded demo |
+| **Cloudflare Quick Tunnel** | `cloudflared tunnel --url http://localhost:80` | random `https://<words>.trycloudflare.com` | No account; URL changes every restart |
+
+Tailscale setup on the laptop: install the app (`brew install --cask tailscale-app`), log in, then
+enable **HTTPS Certificates** once at <https://login.tailscale.com/admin/dns> (the toggle is on
+that DNS page). Without it, `tailscale funnel` fails with
+`500 Internal Server Error: your Tailscale account does not support getting TLS certs`, and
+`tailscale status --json` reports `"CertDomains": null`. Then run `tailscale funnel --bg 80`;
+the setting persists across reboots, so the URL survives restarts. `tailscale funnel status`
+shows the mapping. Verify from outside the machine:
+
+```bash
+curl -s https://<machine>.<tailnet>.ts.net/actuator/health     # {"status":"UP"}
+```
+
+Then run one real submission through that URL — the homepage alone does not prove the worker and
+sandbox are reachable, because they are reached through the queue, not the tunnel.
+
+### 16.4 Keep the laptop awake
+
+```bash
+caffeinate -dimsu &        # block idle/disk/display sleep; stop with `pkill caffeinate`
+```
+
+Check before presenting: `docker compose ... ps` shows every service `healthy`, the local health
+endpoint is `UP`, and the public URL returns 200. Verdicts stuck at `QUEUED` mean the worker is
+not consuming; `SYSTEM_ERROR` with `AccessDeniedException` means the workspace path/UID in
+`~/.oj-laptop.yml` is wrong; `BindException: Permission denied` means `DOCKER_GID` is stale
+(it changes when Colima is recreated).
+
+### 16.5 When to stop using this
+
+This is a demo topology, not a deployment: the URL dies with the laptop, there is no TLS
+certificate you control, the database lives in a Docker volume on that machine, and every visitor
+shares the host's CPU. Migrate to the single-VM setup in §§3–9 as soon as a server exists.
+
 
 ## 15. Troubleshooting
 
@@ -281,6 +396,7 @@ in a secrets manager, never in git.
 | `frontend` exits, Caddy logs "no such host" | DNS for `SITE_ADDRESS` not resolvable yet |
 | HTTPS certificate not issued | Port 80 blocked, DNS wrong, or ACME rate limit |
 | `502` from the edge | Backend unhealthy: `docker compose ps`, then `logs backend` |
+| Login returns `403 Invalid CORS request` | The `Origin` host differs from the `Host` the backend received. With the bundled Caddy edge this should not happen; check that the proxy preserves `Host` (or set `CORS_ALLOWED_ORIGINS` for a separately hosted frontend). |
 | Backend won't start: JWT error | `JWT_SECRET` missing or decodes to < 32 bytes |
 | Backend won't start: DB auth failed | `postgres-data` volume was initialized with different credentials — `down -v` or fix `.env` |
 | Submissions stuck in `QUEUED` | Worker not running, or not connected to RabbitMQ |
